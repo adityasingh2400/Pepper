@@ -46,22 +46,26 @@ struct PeptideTimelineView: View {
 
     private var compactBody: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 5) {
-                Image(systemName: "waveform.path.ecg")
-                    .font(.system(size: 11, weight: .bold))
+            HStack(spacing: 6) {
+                Image(systemName: nowConcentrationFraction == nil ? "waveform.path.ecg" : "waveform.badge.mic")
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundColor(accentColor)
-                Text("Active window")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                Text(compactHeadline)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(Color.appTextPrimary)
-                Spacer(minLength: 8)
-                if let summary = activityHeadline {
+                    .lineLimit(1)
+                Spacer(minLength: 6)
+                if let pct = nowConcentrationFraction {
+                    nowPill(percent: pct)
+                } else if let summary = activityHeadline {
                     Text(summary)
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundColor(Color.appTextTertiary)
+                        .lineLimit(1)
                 }
             }
 
-            curveArea(height: 64, showLabels: true, showGrid: true)
+            curveArea(height: 78, showLabels: true, showGrid: true)
         }
         .padding(14)
         .background(
@@ -73,6 +77,60 @@ struct PeptideTimelineView: View {
                 .stroke(Color.appBorder, lineWidth: 0.5)
         )
         .onAppear { animateIn() }
+    }
+
+    /// Headline used at the top of the compact card. Switches to a friendlier
+    /// "Active in your system" copy when we know how long ago you dosed.
+    private var compactHeadline: String {
+        nowConcentrationFraction == nil ? "Active window" : "Active in your system"
+    }
+
+    /// Animated "Now: 67%" pill that anchors the abstract curve to a real
+    /// percentage so the user can read it like a status bar.
+    private func nowPill(percent: Double) -> some View {
+        let value = Int((percent * 100).rounded())
+        return HStack(spacing: 5) {
+            Circle()
+                .fill(accentColor)
+                .frame(width: 6, height: 6)
+                .overlay(
+                    Circle()
+                        .stroke(accentColor.opacity(0.4), lineWidth: 4)
+                        .scaleEffect(pulse ? 2.2 : 1)
+                        .opacity(pulse ? 0 : 0.8)
+                        .animation(.easeOut(duration: 1.4).repeatForever(autoreverses: false), value: pulse)
+                )
+            Text("Now \(value)%")
+                .font(.system(size: 11, weight: .black, design: .rounded))
+                .foregroundColor(.white)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 9)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(
+                    LinearGradient(
+                        colors: [accentColor, accentColor.opacity(0.8)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+        )
+        .shadow(color: accentColor.opacity(0.35), radius: 6, y: 2)
+    }
+
+    /// Compute the current concentration as a fraction (0..1) of peak.
+    /// Returns nil when no `dosedAt` was supplied or we're outside the curve.
+    private var nowConcentrationFraction: Double? {
+        guard let frac = nowAxisFraction(), frac >= 0, frac <= 1 else { return nil }
+        let samples = curveSamples()
+        guard let after = samples.firstIndex(where: { $0.x >= frac }), after > 0 else { return nil }
+        let prev = samples[after - 1]
+        let next = samples[after]
+        let span = next.x - prev.x
+        let alpha = span > 0 ? (frac - prev.x) / span : 0
+        return prev.y + (next.y - prev.y) * alpha
     }
 
     // MARK: - Expanded

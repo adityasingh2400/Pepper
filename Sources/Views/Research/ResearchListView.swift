@@ -72,6 +72,9 @@ struct EmbeddedResearchView: View {
                             }
                             .buttonStyle(.plain)
                         }
+                        // Bottom inset so the floating action stack
+                        // (mic + Pepper bubble) never obscures the last row.
+                        Color.clear.frame(height: 96)
                     }
                     .padding(16)
                 }
@@ -106,9 +109,19 @@ struct EmbeddedResearchView: View {
 struct CompoundRowView: View {
     let compound: Compound
 
+    private var pkSummary: String? {
+        if let dur = compound.durationHours {
+            return "Active \(PeptideTimeline.formatHours(dur))"
+        }
+        if let h = compound.halfLifeHrs {
+            return "T½ \(PeptideTimeline.formatHours(h))"
+        }
+        return nil
+    }
+
     var body: some View {
         HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 8) {
                     Text(compound.name)
                         .font(.system(size: 15, weight: .bold))
@@ -119,6 +132,18 @@ struct CompoundRowView: View {
                     .font(.system(size: 12))
                     .foregroundColor(Color.appTextTertiary)
                     .lineLimit(1)
+                if let pk = pkSummary {
+                    HStack(spacing: 4) {
+                        Image(systemName: "waveform.path.ecg")
+                            .font(.system(size: 9, weight: .bold))
+                        Text(pk)
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                    }
+                    .foregroundColor(Color.appAccent)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.appAccentTint))
+                }
             }
             Spacer()
             Image(systemName: "chevron.right")
@@ -237,6 +262,10 @@ struct CompoundDetailView: View {
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
                     .padding(.top, 8)
+
+                // Bottom inset so the floating action stack
+                // (mic + Pepper bubble) never obscures the last section.
+                Color.clear.frame(height: 96)
             }
             .padding(16)
         }

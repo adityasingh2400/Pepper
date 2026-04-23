@@ -184,6 +184,10 @@ struct ProtocolTabView: View {
                             }
                         }
                     }
+
+                    // Bottom inset so the floating action stack
+                    // (mic + Pepper bubble) never obscures real content.
+                    Color.clear.frame(height: 96)
                 }
                 .padding(16)
             }

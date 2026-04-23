@@ -41,13 +41,17 @@ struct MainTabView: View {
             }
             .environmentObject(nav)
 
-            // Floating action stack: voice navigator + Pepper bubble
-            VStack(spacing: 12) {
-                FloatingMicButton()
-                PepperBubbleButton(showPepper: $nav.showPepper)
-            }
-            .padding(.trailing, 20)
-            .padding(.bottom, 90)
+            // Single floating action button.
+            //   Tap        → opens AskPepper chat
+            //   Long-press → opens voice navigator (with haptic confirmation)
+            // One bubble keeps the surface uncluttered and never obscures
+            // content unnecessarily, while still exposing the voice mode.
+            PepperBubbleButton(
+                showPepper: $nav.showPepper,
+                onLongPress: { nav.presentVoiceNavigator() }
+            )
+            .padding(.trailing, 16)
+            .padding(.bottom, 96)
             .environmentObject(nav)
         }
         .sheet(isPresented: $nav.showPepper) {
@@ -76,8 +80,13 @@ struct MainTabView: View {
 
 private struct PepperBubbleButton: View {
     @Binding var showPepper: Bool
+    /// Triggered when the user holds the bubble. Used to open the voice
+    /// navigator. Short tap still opens the chat.
+    var onLongPress: (() -> Void)? = nil
+
     @State private var pulsing = false
     @State private var pressed = false
+    @State private var holdProgress: CGFloat = 0
 
     var body: some View {
         ZStack {
@@ -99,12 +108,51 @@ private struct PepperBubbleButton: View {
                 .scaleEffect(pressed ? 0.91 : 1.0)
                 .animation(.spring(response: 0.25, dampingFraction: 0.55), value: pressed)
 
+            // Long-press progress ring
+            Circle()
+                .trim(from: 0, to: holdProgress)
+                .stroke(Color.white.opacity(0.95), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .frame(width: 50, height: 50)
+                .rotationEffect(.degrees(-90))
+                .animation(.linear(duration: 0.05), value: holdProgress)
+
             Image(systemName: "bubble.left.and.bubble.right.fill")
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundColor(.white)
                 .scaleEffect(pressed ? 0.91 : 1.0)
                 .animation(.spring(response: 0.25, dampingFraction: 0.55), value: pressed)
+
+            // Tiny voice indicator showing long-press affordance
+            VStack {
+                HStack {
+                    Spacer()
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: 18, height: 18)
+                        .overlay(
+                            Image(systemName: "mic.fill")
+                                .font(.system(size: 9, weight: .black))
+                                .foregroundColor(Color(hex: "9f1239"))
+                        )
+                        .shadow(color: .black.opacity(0.18), radius: 3, y: 1)
+                        .offset(x: 4, y: -2)
+                }
+                Spacer()
+            }
+            .frame(width: 56, height: 56)
         }
+        .gesture(
+            LongPressGesture(minimumDuration: 0.45)
+                .onChanged { _ in
+                    // Animate the progress ring while held
+                    withAnimation(.linear(duration: 0.45)) { holdProgress = 1 }
+                }
+                .onEnded { _ in
+                    holdProgress = 0
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    onLongPress?()
+                }
+        )
         .onTapGesture {
             withAnimation(.spring(response: 0.25, dampingFraction: 0.55)) { pressed = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
@@ -115,5 +163,7 @@ private struct PepperBubbleButton: View {
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { pulsing = true }
         }
+        .accessibilityLabel("Pepper assistant")
+        .accessibilityHint("Tap to chat with Pepper, long-press for voice navigation.")
     }
 }

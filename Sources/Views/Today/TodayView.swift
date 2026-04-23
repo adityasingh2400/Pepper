@@ -52,13 +52,34 @@ struct TodayView: View {
     }
     var profile: CachedUserProfile? { profileCache.first }
 
+    /// Compounds whose most recent dose is still inside the published
+    /// duration window. Surfaced as a pill in the Today header so the user
+    /// can tell at a glance what's circulating.
+    var activeRightNow: [String] {
+        guard let proto = activeProtocols.first else { return [] }
+        let now = Date()
+        var out: [String] = []
+        var seen = Set<String>()
+        for c in proto.compounds where !seen.contains(c.compoundName) {
+            seen.insert(c.compoundName)
+            guard let resolved = CompoundCatalog.compound(named: c.compoundName) else { continue }
+            guard let lastDose = allDoseLogs.first(where: { $0.compoundName == c.compoundName })?.dosedAt else { continue }
+            let elapsedHours = now.timeIntervalSince(lastDose) / 3600
+            let duration = resolved.durationHours ?? 0
+            if duration > 0, elapsedHours < duration {
+                out.append(resolved.name)
+            }
+        }
+        return out
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 16) {
 
-                    // 1. Greeting header
-                    TodayHeader()
+                    // 1. Greeting header + "active right now" pill
+                    TodayHeader(activeNow: activeRightNow)
 
                     // 2. Quick actions
                     QuickActionsStrip(
@@ -126,6 +147,10 @@ struct TodayView: View {
                         symptoms: todaySideEffects,
                         onLogNew: { showQuickSideEffect = true }
                     )
+
+                    // Bottom inset so the floating action stack
+                    // (mic + Pepper bubble) never obscures real content.
+                    Color.clear.frame(height: 96)
                 }
                 .padding(16)
             }
@@ -1071,6 +1096,8 @@ struct MacroTotalChip: View {
 // MARK: - Today Header
 
 struct TodayHeader: View {
+    var activeNow: [String] = []
+
     private var greeting: String {
         let h = Calendar.current.component(.hour, from: Date())
         if h < 12 { return "Good morning" }
@@ -1085,18 +1112,64 @@ struct TodayHeader: View {
     }
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(greeting)
-                    .font(.system(size: 26, weight: .black))
-                    .foregroundColor(Color.appTextPrimary)
-                Text(dateString)
-                    .font(.system(size: 13))
-                    .foregroundColor(Color.appTextMeta)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(greeting)
+                        .font(.system(size: 26, weight: .black))
+                        .foregroundColor(Color.appTextPrimary)
+                    Text(dateString)
+                        .font(.system(size: 13))
+                        .foregroundColor(Color.appTextMeta)
+                }
+                Spacer()
             }
-            Spacer()
+
+            if !activeNow.isEmpty {
+                ActiveRightNowPill(compoundNames: activeNow)
+            }
         }
         .padding(.top, 4)
+    }
+}
+
+/// Tiny capsule that lists the compounds currently inside their duration
+/// window. Calm visual — doesn't compete with the headline, but is the first
+/// thing the user reads on a glance.
+struct ActiveRightNowPill: View {
+    let compoundNames: [String]
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ZStack {
+                Circle()
+                    .fill(Color.appAccent)
+                    .frame(width: 7, height: 7)
+                Circle()
+                    .stroke(Color.appAccent.opacity(0.4), lineWidth: 6)
+                    .frame(width: 7, height: 7)
+                    .blur(radius: 4)
+            }
+            Text("Active in your system")
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(Color.appTextSecondary)
+                .kerning(0.4)
+            Text("·")
+                .foregroundColor(Color.appTextMeta)
+            Text(compoundNames.prefix(3).joined(separator: ", "))
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundColor(Color.appAccent)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(
+            Capsule()
+                .fill(Color.appAccentTint)
+                .overlay(
+                    Capsule().stroke(Color.appAccent.opacity(0.18), lineWidth: 0.5)
+                )
+        )
     }
 }
 
@@ -1522,12 +1595,18 @@ struct QuickDoseLogSheet: View {
 
 // MARK: - Active Compound Timelines Card
 
-/// Shows the pharmacokinetic curve for each compound in the user's active protocol,
-/// anchored to the most recent dose so they can see "where they are" on the curve
-/// right now (peaking, decaying, fully cleared, etc.).
+/// "Where you are on the curve right now" — Today's hero card for active
+/// peptides. Each row pairs the compound's pharmacokinetic curve with the
+/// time elapsed since the most recent dose, so the user instantly knows
+/// whether they're on the rise, peaking, or decaying.
+///
+/// Tapping a row opens that compound's detail page (with the expanded
+/// timeline + dosing/pinning shortcuts).
 struct ActiveCompoundTimelinesCard: View {
     let compounds: [LocalProtocolCompound]
     let recentDoses: [LocalDoseLog]
+
+    @EnvironmentObject private var nav: NavigationCoordinator
 
     private struct Row: Identifiable {
         let id = UUID()
@@ -1556,15 +1635,20 @@ struct ActiveCompoundTimelinesCard: View {
         guard !rows.isEmpty else { return AnyView(EmptyView()) }
         return AnyView(
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("ACTIVE WINDOWS")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(Color.appTextMeta)
-                        .kerning(1.2)
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("COMPOUND ACTIVITY")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(Color.appTextMeta)
+                            .kerning(1.2)
+                        Text("Live curves anchored to your last dose")
+                            .font(.system(size: 11))
+                            .foregroundColor(Color.appTextMeta)
+                    }
                     Spacer()
-                    Text("Live PK curves")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(Color.appTextMeta)
+                    Image(systemName: "waveform.path.ecg.rectangle.fill")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(Color.appAccent)
                 }
 
                 VStack(spacing: 12) {
@@ -1582,29 +1666,68 @@ struct ActiveCompoundTimelinesCard: View {
     }
 
     private func compoundRow(_ row: Row) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Text(row.compound.name)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Color.appTextPrimary)
-                Spacer()
-                if let lastDose = row.lastDosedAt {
-                    Text(relativeLabel(for: lastDose))
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color.appTextTertiary)
-                } else {
-                    Text("No doses yet")
-                        .font(.system(size: 11, weight: .semibold))
+        Button {
+            nav.openCompound(row.compound)
+        } label: {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Text(row.compound.name)
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(Color.appTextPrimary)
+                    if let phase = phaseLabel(for: row) {
+                        Text(phase.text)
+                            .font(.system(size: 10, weight: .black, design: .rounded))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(phase.color))
+                    }
+                    Spacer()
+                    if let lastDose = row.lastDosedAt {
+                        Text(relativeLabel(for: lastDose))
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                            .foregroundColor(Color.appTextTertiary)
+                    } else {
+                        Text("No doses yet")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(Color.appTextMeta)
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundColor(Color.appTextMeta)
                 }
-            }
 
-            PeptideTimelineView(
-                timeline: row.compound.timeline,
-                mode: .compact,
-                dosedAt: row.lastDosedAt
-            )
+                PeptideTimelineView(
+                    timeline: row.compound.timeline,
+                    mode: .compact,
+                    dosedAt: row.lastDosedAt
+                )
+            }
         }
+        .buttonStyle(.plain)
+    }
+
+    private struct Phase { let text: String; let color: Color }
+
+    /// Map elapsed-time-into-curve into a human label so even glance-readers
+    /// know whether the compound is climbing, peaking, or fading.
+    private func phaseLabel(for row: Row) -> Phase? {
+        guard let lastDose = row.lastDosedAt else { return nil }
+        let elapsedHours = Date().timeIntervalSince(lastDose) / 3600
+        let onset    = row.compound.timeToEffectHours ?? 0
+        let peak     = row.compound.peakEffectHours   ?? 0
+        let duration = row.compound.durationHours     ?? 0
+
+        if elapsedHours < onset {
+            return Phase(text: "Onset", color: Color.appAccent.opacity(0.6))
+        }
+        if peak > 0, elapsedHours < peak * 1.1 {
+            return Phase(text: "Peaking", color: Color.appAccent)
+        }
+        if duration > 0, elapsedHours < duration {
+            return Phase(text: "Decaying", color: Color(hex: "f59e0b"))
+        }
+        return Phase(text: "Cleared", color: Color.appTextMeta)
     }
 
     private func relativeLabel(for date: Date) -> String {

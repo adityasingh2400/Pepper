@@ -21,10 +21,8 @@ struct VoiceNavigatorView: View {
 
     var body: some View {
         ZStack {
-            Color.black.opacity(0.55)
-                .ignoresSafeArea()
-                .contentShape(Rectangle())
-                .onTapGesture { dismiss() }
+            // Soft animated radial backdrop so the user feels the focus shift.
+            backgroundLayer
 
             VStack(spacing: 16) {
                 Spacer()
@@ -32,6 +30,33 @@ struct VoiceNavigatorView: View {
                 Spacer().frame(height: 60)
             }
             .padding(.horizontal, 24)
+
+            // Top-right cancel chip
+            VStack {
+                HStack {
+                    Spacer()
+                    Button {
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 11, weight: .black))
+                            Text("Close")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(
+                            Capsule().fill(Color.white.opacity(0.18))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 18)
+                Spacer()
+            }
         }
         .task {
             await voice.start(contextualStrings: navigationVocabulary())
@@ -44,6 +69,26 @@ struct VoiceNavigatorView: View {
         .onChange(of: voice.transcript) { _, newValue in
             handleTranscript(newValue)
         }
+    }
+
+    private var backgroundLayer: some View {
+        ZStack {
+            Color.black.opacity(0.92).ignoresSafeArea()
+
+            // Subtle accent radial bloom that breathes with the audio level
+            RadialGradient(
+                colors: [Color.appAccent.opacity(0.35), .clear],
+                center: .center,
+                startRadius: 50,
+                endRadius: 360
+            )
+            .ignoresSafeArea()
+            .scaleEffect(0.85 + CGFloat(voice.audioLevel) * 0.4)
+            .animation(.easeOut(duration: 0.18), value: voice.audioLevel)
+            .opacity(voice.isListening ? 0.9 : 0.4)
+        }
+        .contentShape(Rectangle())
+        .onTapGesture { dismiss() }
     }
 
     // MARK: - Card
@@ -85,10 +130,6 @@ struct VoiceNavigatorView: View {
                 .foregroundColor(Color.appTextTertiary)
                 .multilineTextAlignment(.center)
                 .padding(.top, 4)
-
-            Button("Cancel", action: dismiss.callAsFunction)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(Color.appTextTertiary)
         }
         .padding(24)
         .frame(maxWidth: .infinity)
@@ -225,7 +266,8 @@ extension Notification.Name {
 }
 
 /// Floating mic that summons the voice navigator. Sits next to the Pepper
-/// bubble in `MainTabView`.
+/// bubble in `MainTabView`. Smaller than the Pepper bubble on purpose — it's
+/// a secondary action, so the visual weight tilts toward "ask Pepper".
 struct FloatingMicButton: View {
     @EnvironmentObject private var nav: NavigationCoordinator
     @State private var pressed = false
@@ -240,18 +282,26 @@ struct FloatingMicButton: View {
         } label: {
             ZStack {
                 Circle()
-                    .fill(Color.appCard)
-                    .frame(width: 48, height: 48)
-                    .shadow(color: .black.opacity(0.25), radius: pressed ? 4 : 12, y: pressed ? 1 : 4)
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.appCard, Color.appCard.opacity(0.95)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: 44, height: 44)
+                    .shadow(color: .black.opacity(0.18), radius: pressed ? 3 : 10, y: pressed ? 1 : 4)
                     .overlay(
-                        Circle().stroke(Color.appBorder, lineWidth: 0.5)
+                        Circle().stroke(Color.appBorder.opacity(0.8), lineWidth: 0.5)
                     )
                 Image(systemName: "mic.fill")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.system(size: 16, weight: .bold))
                     .foregroundColor(Color.appAccent)
             }
             .scaleEffect(pressed ? 0.9 : 1.0)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Voice navigator")
+        .accessibilityHint("Tap and speak to navigate the app, e.g. open BPC-157")
     }
 }
