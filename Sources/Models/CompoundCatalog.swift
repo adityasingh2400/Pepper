@@ -54,7 +54,9 @@ struct CompoundCatalog {
         .init(canonical: "Ipamorelin",       category: .ghSecretagogue, aliases: [
             "ipa", "ipamorelan", "ipamorelan",
             "ipa morelin", "ipa merlin",      // STT loves this one
-            "epimorelin", "ipamoreline"
+            "epimorelin", "ipamoreline",
+            // Speech-to-text often hears "Ipamorelin" as the city name:
+            "amarillo", "a marillo"
         ]),
         .init(canonical: "CJC-1295",         category: .ghSecretagogue, aliases: [
             "cjc", "c j c", "cjc 1295", "cjc1295", "cjc twelve ninety five",
@@ -949,8 +951,27 @@ extension CompoundCatalog {
         ),
     ]
 
+    /// Display names like `CJC-1295 + Ipamorelin` (one vial). For lookups we
+    /// use the **first** member so dosing defaults & PK still resolve.
+    static let blendDisplaySeparator = " + "
+
     static func compound(named name: String) -> Compound? {
-        allCompoundsSeed.first { $0.name == name || $0.slug == name }
+        let primary = primaryCanonicalName(forProtocolDisplay: name)
+        return allCompoundsSeed.first { $0.name == primary || $0.slug == primary }
+    }
+
+    /// Canonical names for a blend saved as `A + B + C`, or nil if not a blend.
+    static func blendMembers(fromDisplayName name: String) -> [String]? {
+        guard name.contains(blendDisplaySeparator) else { return nil }
+        let parts = name.components(separatedBy: blendDisplaySeparator)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return parts.count >= 2 ? parts : nil
+    }
+
+    /// Single-compound name or first peptide in a blend string.
+    static func primaryCanonicalName(forProtocolDisplay name: String) -> String {
+        blendMembers(fromDisplayName: name)?.first ?? name
     }
 
     // Compounds tagged with at least one of the given goal IDs.

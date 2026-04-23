@@ -43,12 +43,16 @@ struct StackPreviewSheet: View {
     struct Row: Identifiable, Hashable {
         let id = UUID()
         var compoundName: String
+        /// Same-vial peptides; empty for a single compound.
+        var blendMembers: [String]
         var doseMcg: Double
         var frequency: String
         var sourceSegment: String?
         /// True when this row was inferred (auto-filled defaults). The UI
         /// surfaces a small "review" badge so the user knows to double-check.
         var isInferred: Bool
+
+        var isBlend: Bool { blendMembers.count >= 2 }
     }
 
     var body: some View {
@@ -99,6 +103,7 @@ struct StackPreviewSheet: View {
                 AddCompoundManuallySheet { name, dose, freq in
                     rows.append(Row(
                         compoundName: name,
+                        blendMembers: [],
                         doseMcg: dose,
                         frequency: freq,
                         sourceSegment: nil,
@@ -156,27 +161,82 @@ struct StackPreviewSheet: View {
     private func rowCard(row: Binding<Row>) -> some View {
         let r = row.wrappedValue
         return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(r.compoundName)
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(Color.appTextPrimary)
-                if r.isInferred {
-                    Text("Review")
-                        .font(.system(size: 9, weight: .black, design: .rounded))
-                        .foregroundColor(Color(hex: "92400e"))
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Capsule().fill(Color(hex: "fef3c7")))
+            HStack(alignment: .top, spacing: 10) {
+                if r.isBlend {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color(hex: "9f1239").opacity(0.14),
+                                        Color(hex: "c2410c").opacity(0.10)
+                                    ],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                            .frame(width: 44, height: 44)
+                        Image(systemName: "cylinder.split.1x2.fill")
+                            .font(.system(size: 20, weight: .semibold))
+                            .foregroundColor(Color(hex: "9f1239"))
+                            .symbolRenderingMode(.hierarchical)
+                    }
                 }
-                Spacer()
-                Button {
-                    rows.removeAll { $0.id == r.id }
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(Color.appTextMeta)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(r.compoundName)
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(Color.appTextPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        if r.isBlend {
+                            Text("Blend")
+                                .font(.system(size: 9, weight: .black, design: .rounded))
+                                .foregroundColor(Color(hex: "9f1239"))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color(hex: "9f1239").opacity(0.12)))
+                        }
+                        if r.isInferred {
+                            Text("Review")
+                                .font(.system(size: 9, weight: .black, design: .rounded))
+                                .foregroundColor(Color(hex: "92400e"))
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color(hex: "fef3c7")))
+                        }
+                        Spacer(minLength: 8)
+                        Button {
+                            rows.removeAll { $0.id == r.id }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 18))
+                                .foregroundColor(Color.appTextMeta)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    if r.isBlend {
+                        Text("One vial — same syringe draw; dose is total per injection.")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(Color.appTextTertiary)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        FlowLayout(spacing: 6, lineSpacing: 6) {
+                            ForEach(r.blendMembers, id: \.self) { member in
+                                Text(member)
+                                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                                    .foregroundColor(Color.appTextSecondary)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(
+                                        Capsule()
+                                            .fill(Color.appInputBackground)
+                                    )
+                            }
+                        }
+                    }
                 }
-                .buttonStyle(.plain)
             }
 
             if let segment = r.sourceSegment {
@@ -184,10 +244,10 @@ struct StackPreviewSheet: View {
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(Color.appTextMeta)
                     .italic()
-                    .lineLimit(2)
+                    .lineLimit(3)
             }
 
-            HStack(spacing: 10) {
+            VStack(spacing: 10) {
                 editorTile(label: "DOSE", value: "\(Int(r.doseMcg)) mcg") {
                     Stepper("", value: row.doseMcg, in: 1...10_000, step: 25)
                         .labelsHidden()
@@ -201,6 +261,7 @@ struct StackPreviewSheet: View {
                     .pickerStyle(.menu)
                     .labelsHidden()
                     .tint(Color.appAccent)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                 }
             }
         }
@@ -209,7 +270,11 @@ struct StackPreviewSheet: View {
         .cornerRadius(16)
         .overlay(
             RoundedRectangle(cornerRadius: 16)
-                .stroke(r.isInferred ? Color(hex: "fde68a") : Color.appBorder, lineWidth: 1)
+                .stroke(
+                    r.isBlend ? Color(hex: "9f1239").opacity(0.35)
+                        : (r.isInferred ? Color(hex: "fde68a") : Color.appBorder),
+                    lineWidth: r.isBlend ? 1.5 : 1
+                )
         )
     }
 
@@ -266,6 +331,7 @@ struct StackPreviewSheet: View {
         rows = initialDetections.map {
             Row(
                 compoundName: $0.compoundName,
+                blendMembers: $0.blendMembers,
                 doseMcg: $0.doseMcg ?? defaultDose(for: $0.compoundName),
                 frequency: $0.frequency ?? defaultFrequency(for: $0.compoundName),
                 sourceSegment: $0.sourceSegment.isEmpty ? nil : $0.sourceSegment,

@@ -63,6 +63,17 @@ struct VoiceImportView: View {
         )
     }
 
+    /// Counts **vials / line items** — a blend is one row, not two peptides.
+    private var inventoryCountLabel: String {
+        let n = compoundDetections.count
+        let blends = compoundDetections.filter(\.isBlend).count
+        if n == 1, blends == 1 { return "1 blend" }
+        if blends > 0 {
+            return "\(n) items (\(blends) blend\(blends == 1 ? "" : "s"))"
+        }
+        return "\(n) compound\(n == 1 ? "" : "s")"
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -253,27 +264,42 @@ struct VoiceImportView: View {
             cardHeader(
                 icon: "drop.fill",
                 title: "INVENTORY DETECTED",
-                subtitle: "\(compoundDetections.count) compound\(compoundDetections.count == 1 ? "" : "s")",
+                subtitle: inventoryCountLabel,
                 tint: Color(hex: "c2410c")
             )
             ForEach(compoundDetections) { d in
-                HStack {
-                    Text(d.compoundName)
-                        .font(.system(size: 14, weight: .semibold))
-                    Spacer()
-                    if let dose = d.doseMcg {
-                        Text("\(Int(dose)) mcg")
-                            .font(.system(size: 12, weight: .semibold, design: .rounded))
-                            .monospacedDigit()
-                    } else {
-                        Text("no dose")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "92400e"))
+                HStack(alignment: .top, spacing: 10) {
+                    if d.isBlend {
+                        Image(systemName: "cylinder.split.1x2.fill")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(Color(hex: "9f1239"))
+                            .frame(width: 22)
                     }
-                    if let freq = d.frequency {
-                        Text("· \(prettyFreq(freq))")
-                            .font(.system(size: 12, design: .rounded))
-                            .foregroundColor(Color.appTextTertiary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(d.compoundName)
+                            .font(.system(size: 14, weight: .semibold))
+                        if d.isBlend {
+                            Text("One vial · blend")
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .foregroundColor(Color(hex: "9f1239").opacity(0.85))
+                        }
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        if let dose = d.doseMcg {
+                            Text("\(Int(dose)) mcg")
+                                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                .monospacedDigit()
+                        } else {
+                            Text("no dose")
+                                .font(.system(size: 11))
+                                .foregroundColor(Color(hex: "92400e"))
+                        }
+                        if let freq = d.frequency {
+                            Text(prettyFreq(freq))
+                                .font(.system(size: 11, design: .rounded))
+                                .foregroundColor(Color.appTextTertiary)
+                        }
                     }
                 }
             }
@@ -375,7 +401,8 @@ struct VoiceImportView: View {
         v.append(contentsOf: [
             "recovery", "healing", "fat loss", "muscle", "growth",
             "longevity", "anti-aging", "focus", "memory", "libido",
-            "skin", "hair", "immune", "sleep", "tendons", "joints"
+            "skin", "hair", "immune", "sleep", "tendons", "joints",
+            "blend", "ipamorelin", "CJC", "no DAC", "amarillo"
         ])
         return v
     }

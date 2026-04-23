@@ -30,7 +30,11 @@ enum StackParser {
 
     struct Detection: Identifiable, Hashable {
         let id = UUID()
+        /// Single compound, or a **blend** title like `CJC-1295 + Ipamorelin`.
         var compoundName: String
+        /// When non-empty, these peptides are co-reconstituted (one vial / one draw).
+        /// `compoundName` should still be the human-readable blend title.
+        var blendMembers: [String]
         /// Best-guess dose in micrograms. Nil = couldn't extract.
         var doseMcg: Double?
         /// Best-guess frequency token (matches `LocalProtocolCompound.frequency`).
@@ -42,6 +46,7 @@ enum StackParser {
 
         var hasDose: Bool { doseMcg != nil }
         var hasFrequency: Bool { frequency != nil }
+        var isBlend: Bool { blendMembers.count >= 2 }
     }
 
     /// Parse an entire blob and return one detection per compound found,
@@ -62,11 +67,94 @@ enum StackParser {
             }
         }
 
+        var merged = Array(byCompound.values)
+        merged = mergeCJCIpamorelinBlend(detections: merged, fullText: raw)
+
         // Stable sort: highest confidence first, then alphabetical.
-        return byCompound.values.sorted {
+        return merged.sorted {
             if $0.confidence != $1.confidence { return $0.confidence > $1.confidence }
             return $0.compoundName < $1.compoundName
         }
+    }
+
+    // MARK: - Blend merging (same-vial formulations)
+
+    /// Community-standard GH secretagogue blend. When the transcript clearly
+    /// refers to a **combined** product, collapse two rows into one vial.
+    private static func mergeCJCIpamorelinBlend(detections: [Detection], fullText: String) -> [Detection] {
+        let cjc = "CJC-1295"
+        let ipa = "Ipamorelin"
+        guard let detC = detections.first(where: { $0.compoundName == cjc }),
+              let detI = detections.first(where: { $0.compoundName == ipa }) else {
+            return detections
+        }
+        guard shouldTreatAsCJCIpaBlend(fullText: fullText, a: detC, b: detI) else {
+            return detections
+        }
+
+        var rest = detections.filter { $0.compoundName != cjc && $0.compoundName != ipa }
+        let title = cjc + CompoundCatalog.blendDisplaySeparator + ipa
+        let mergedSegment = [detC.sourceSegment, detI.sourceSegment]
+            .filter { !$0.isEmpty }
+            .uniquedPreservingOrder()
+            .joined(separator: " · ")
+
+        let blend = Detection(
+            compoundName: title,
+            blendMembers: [cjc, ipa],
+            doseMcg: detC.doseMcg ?? detI.doseMcg,
+            frequency: detC.frequency ?? detI.frequency,
+            sourceSegment: mergedSegment.isEmpty ? detC.sourceSegment : mergedSegment,
+            confidence: max(detC.confidence, detI.confidence)
+        )
+        rest.append(blend)
+        return rest
+    }
+
+    /// Require evidence of a **combined** product so we don't merge people who
+    /// run CJC and Ipamorelin from separate vials on the same stack.
+    private static func shouldTreatAsCJCIpaBlend(fullText: String, a: Detection, b: Detection) -> Bool {
+        let t = fullText.lowercased()
+
+        if slashOrAmpBetweenCJCandIPA(in: t) { return true }
+
+        let blendCue =
+            t.contains("blend") || t.contains("blended") ||
+            t.contains("combo") || t.contains("combined") ||
+            t.contains("premix") || t.contains("pre-mix") ||
+            t.contains("same vial") || t.contains("one vial") ||
+            t.contains("mixed peptide")
+
+        if blendCue { return true }
+
+        // "CJC no DAC + Ipamorelin" is almost always a single blended SKU in
+        // clinic / telemed copy — merge even when the user never says "blend".
+        if noDACCJCWithIpamorelinMention(in: t) { return true }
+
+        return false
+    }
+
+    /// True when the transcript reads like a Mod GRF(1-29) / Ipamorelin product
+    /// description (no DAC on the CJC side + GHRP on the same stack item).
+    private static func noDACCJCWithIpamorelinMention(in t: String) -> Bool {
+        let noDAC = t.contains("no dac") || t.contains("no-dac") || t.contains("nodac") || t.contains("without dac")
+        guard noDAC else { return false }
+        let cjcCue = t.contains("cjc") || t.contains("see jc") || t.contains("c j c") || t.contains("mod grf")
+        let ipaCue =
+            t.contains("ipamorelin") || t.contains(" ipa") || t.contains("ipa ") ||
+            t.contains("amarillo") || t.contains("ipa merlin") || t.contains("merlin")
+        return cjcCue && ipaCue
+    }
+
+    private static func slashOrAmpBetweenCJCandIPA(in text: String) -> Bool {
+        // Note: `1295?` in a regex means "129" + optional "5", so we must
+        // spell optional "1295" as `(?:1295)?`.
+        guard let regex = try? NSRegularExpression(
+            pattern: #"(?i)cjc(?:[-\s]*1295)?\s*[/&+]\s*ip(?:amorelin|a)\b|ip(?:amorelin|a)\b\s*[/&+]\s*cjc(?:[-\s]*1295)?"#,
+            options: []
+        ) else { return false }
+        let range = NSRange(location: 0, length: (text as NSString).length)
+        return regex.firstMatch(in: text, options: [], range: range) != nil
     }
 
     // MARK: - Segmenting
@@ -144,6 +232,7 @@ enum StackParser {
             let conf = confidence(hasDose: dose != nil, hasFreq: frequency != nil)
             return Detection(
                 compoundName: name,
+                blendMembers: [],
                 doseMcg: dose,
                 frequency: frequency,
                 sourceSegment: segment,
@@ -260,5 +349,18 @@ extension StackParser.Detection {
             frequency: frequency ?? "daily",
             doseTimes: ["08:00"]
         )
+    }
+}
+
+// MARK: - Small helpers
+
+private extension Array where Element == String {
+    func uniquedPreservingOrder() -> [String] {
+        var seen = Set<String>()
+        var out: [String] = []
+        for s in self {
+            if seen.insert(s).inserted { out.append(s) }
+        }
+        return out
     }
 }

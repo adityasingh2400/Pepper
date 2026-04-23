@@ -68,6 +68,7 @@ enum StackRecommender {
         return picked.map { (c, _) in
             StackParser.Detection(
                 compoundName: c.name,
+                blendMembers: [],
                 doseMcg: defaultDose(for: c, experience: experience),
                 frequency: c.dosingFrequency ?? "daily",
                 sourceSegment: rationale(for: c, goals: goals),

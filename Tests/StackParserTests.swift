@@ -169,4 +169,52 @@ final class StackParserTests: XCTestCase {
         let names = CompoundCatalog.match(in: "I had some tea this morning")
         XCTAssertTrue(names.isEmpty, "should not pick up anything; got \(names)")
     }
+
+    // MARK: - Blends + STT vocabulary
+
+    func test_amarillo_maps_to_ipamorelin() {
+        let names = CompoundCatalog.match(in: "I have a see jc Amarillo and blend with no DAC")
+        XCTAssertTrue(names.contains("Ipamorelin"), "STT often says Amarillo for Ipamorelin")
+        XCTAssertTrue(names.contains("CJC-1295"))
+    }
+
+    func test_cjc_ipamorelin_merges_when_blend_said() {
+        let input = """
+        Yeah so my stack right now I use Motsi um I use g h k c u and \
+        I have a see jc Amarillo and blend with no DAC those are my three different peptides
+        """
+        let detected = StackParser.parse(input)
+        let blend = detected.first(where: { $0.isBlend })
+        XCTAssertNotNil(blend, "should merge CJC + Ipamorelin into one vial row")
+        XCTAssertEqual(blend?.blendMembers, ["CJC-1295", "Ipamorelin"])
+        XCTAssertEqual(blend?.compoundName, "CJC-1295 + Ipamorelin")
+
+        let singles = Set(detected.filter { !$0.isBlend }.map(\.compoundName))
+        XCTAssertTrue(singles.contains("MOTS-c"))
+        XCTAssertTrue(singles.contains("GHK-Cu"))
+        XCTAssertFalse(singles.contains("CJC-1295"))
+        XCTAssertFalse(singles.contains("Ipamorelin"))
+        XCTAssertEqual(detected.count, 3, "MOTS-c, GHK-Cu, one blend")
+    }
+
+    func test_cjc_slash_ipa_merges_without_blend_word() {
+        let input = "I pin cjc/ipamorelin 100 mcg daily no dac"
+        let detected = StackParser.parse(input)
+        XCTAssertTrue(detected.contains { $0.isBlend && $0.compoundName == "CJC-1295 + Ipamorelin" })
+    }
+
+    func test_cjc_and_ipamorelin_separate_vials_stays_split() {
+        // No blend cue, no slash, no "no dac" + both — should stay two rows.
+        let input = "Morning CJC-1295 100 mcg, night Ipamorelin 200 mcg, both daily"
+        let detected = StackParser.parse(input)
+        let names = Set(detected.map(\.compoundName))
+        XCTAssertTrue(names.contains("CJC-1295"))
+        XCTAssertTrue(names.contains("Ipamorelin"))
+        XCTAssertNil(detected.first { $0.isBlend })
+    }
+
+    func test_compound_named_resolves_blend_display_to_primary_member() {
+        let c = CompoundCatalog.compound(named: "CJC-1295 + Ipamorelin")
+        XCTAssertEqual(c?.name, "CJC-1295")
+    }
 }
