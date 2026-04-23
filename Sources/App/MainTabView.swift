@@ -7,6 +7,7 @@ struct MainTabView: View {
     @Environment(\.modelContext) private var ctx
 
     var body: some View {
+        let userId = authManager.session?.user.id.uuidString ?? ""
         ZStack(alignment: .bottomTrailing) {
             TabView(selection: $nav.selectedTab) {
                 TodayView()
@@ -19,7 +20,7 @@ struct MainTabView: View {
                                      systemImage: NavigationCoordinator.Tab.food.systemImage) }
                     .tag(NavigationCoordinator.Tab.food)
 
-                ProtocolTabView()
+                ProtocolTabView(userId: userId)
                     .tabItem { Label(NavigationCoordinator.Tab.protocol.title,
                                      systemImage: NavigationCoordinator.Tab.protocol.systemImage) }
                     .tag(NavigationCoordinator.Tab.protocol)

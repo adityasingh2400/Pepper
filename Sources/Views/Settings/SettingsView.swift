@@ -21,6 +21,7 @@ private struct PepperConsentToggleRow: View {
 struct SettingsView: View {
     @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var purchases: PurchasesManager
+    @Environment(\.modelContext) private var ctx
     @AppStorage("dark_mode_enabled") private var darkModeEnabled = false
     @State private var showSignOutConfirm = false
     @State private var isSigningOut = false
@@ -142,7 +143,9 @@ struct SettingsView: View {
     }
 
     private func signOut() {
+        guard let userId = authManager.session?.user.id.uuidString else { return }
         isSigningOut = true
+        SyncService.shared.clearUserData(userId: userId, context: ctx)
         Task {
             try? await authManager.signOut()
             await purchases.logOut()

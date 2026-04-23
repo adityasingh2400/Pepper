@@ -7,16 +7,18 @@ struct ProtocolTabView: View {
     @EnvironmentObject private var purchases: PurchasesManager
     @Environment(\.modelContext) private var ctx
 
-    @Query(filter: #Predicate<LocalProtocol> { $0.isActive == true })
-    private var activeProtocols: [LocalProtocol]
-
-    @Query(sort: \LocalDoseLog.dosedAt, order: .reverse)
-    private var doseLogs: [LocalDoseLog]
-
+    @Query private var activeProtocols: [LocalProtocol]
+    @Query private var doseLogs: [LocalDoseLog]
     @Query private var vials: [LocalVial]
+    @Query private var sideEffects: [LocalSideEffectLog]
 
-    @Query(sort: \LocalSideEffectLog.loggedAt, order: .reverse)
-    private var sideEffects: [LocalSideEffectLog]
+    init(userId: String) {
+        let uid = userId
+        _activeProtocols = Query(filter: #Predicate<LocalProtocol> { $0.isActive == true && $0.userId == uid })
+        _doseLogs = Query(filter: #Predicate<LocalDoseLog> { $0.userId == uid }, sort: \LocalDoseLog.dosedAt, order: .reverse)
+        _vials = Query(filter: #Predicate<LocalVial> { $0.userId == uid })
+        _sideEffects = Query(filter: #Predicate<LocalSideEffectLog> { $0.userId == uid }, sort: \LocalSideEffectLog.loggedAt, order: .reverse)
+    }
 
     @State private var showAddProtocol = false
     @State private var showStackImport = false
@@ -26,6 +28,7 @@ struct ProtocolTabView: View {
     @State private var showDoseHistory = false
     @State private var showLogSideEffect = false
     @State private var showSideEffectHistory = false
+    @State private var showInjectionTracker = false
 
     var body: some View {
         NavigationStack {
@@ -59,6 +62,38 @@ struct ProtocolTabView: View {
                             }
                         }
                     }
+
+                    // Injection Tracker
+                    Button(action: { showInjectionTracker = true }) {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.appAccentTint)
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: "figure.stand")
+                                    .font(.system(size: 18))
+                                    .foregroundColor(Color.appAccent)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Injection Site Tracker")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundColor(Color.appTextPrimary)
+                                Text("Rotate sites to reduce tissue stress")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(Color.appTextTertiary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(Color.appTextMeta)
+                        }
+                        .padding(14)
+                        .background(Color.appCard)
+                        .cornerRadius(16)
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.appBorder, lineWidth: 1))
+                        .shadow(color: .black.opacity(0.04), radius: 4, y: 1)
+                    }
+                    .buttonStyle(.plain)
 
                     // Vials section
                     VStack(alignment: .leading, spacing: 10) {
@@ -179,7 +214,7 @@ struct ProtocolTabView: View {
                     .environmentObject(authManager)
             }
             .sheet(isPresented: $showAddProtocol) {
-                AddProtocolSheet()
+                AddProtocolSheet(userId: authManager.session?.user.id.uuidString ?? "")
                     .environmentObject(authManager)
             }
             .sheet(isPresented: $showLogDose) {
@@ -202,6 +237,10 @@ struct ProtocolTabView: View {
             }
             .sheet(isPresented: $showSideEffectHistory) {
                 SideEffectHistorySheet(effects: sideEffects)
+            }
+            .sheet(isPresented: $showInjectionTracker) {
+                InjectionTrackerView()
+                    .environmentObject(authManager)
             }
         }
     }
@@ -413,8 +452,12 @@ struct AddProtocolSheet: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var dismiss
 
-    @Query(filter: #Predicate<LocalProtocol> { $0.isActive == true })
-    private var activeProtocols: [LocalProtocol]
+    @Query private var activeProtocols: [LocalProtocol]
+
+    init(userId: String) {
+        let uid = userId
+        _activeProtocols = Query(filter: #Predicate<LocalProtocol> { $0.isActive == true && $0.userId == uid })
+    }
 
     @State private var name = ""
     @State private var showCompoundPicker = false

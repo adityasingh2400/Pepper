@@ -11,6 +11,31 @@ final class SyncService {
     static let shared = SyncService()
     private init() {}
 
+    // MARK: - Clear user data on sign-out
+
+    func clearUserData(userId: String, context: ModelContext) {
+        let uid = userId
+        let protocols = (try? context.fetch(FetchDescriptor<LocalProtocol>(predicate: #Predicate { $0.userId == uid }))) ?? []
+        protocols.forEach { context.delete($0) }
+        let doseLogs = (try? context.fetch(FetchDescriptor<LocalDoseLog>(predicate: #Predicate { $0.userId == uid }))) ?? []
+        doseLogs.forEach { context.delete($0) }
+        let vials = (try? context.fetch(FetchDescriptor<LocalVial>(predicate: #Predicate { $0.userId == uid }))) ?? []
+        vials.forEach { context.delete($0) }
+        let foodLogs = (try? context.fetch(FetchDescriptor<LocalFoodLog>(predicate: #Predicate { $0.userId == uid }))) ?? []
+        foodLogs.forEach { context.delete($0) }
+        let sideEffects = (try? context.fetch(FetchDescriptor<LocalSideEffectLog>(predicate: #Predicate { $0.userId == uid }))) ?? []
+        sideEffects.forEach { context.delete($0) }
+        let workouts = (try? context.fetch(FetchDescriptor<LocalWorkout>(predicate: #Predicate { $0.userId == uid }))) ?? []
+        workouts.forEach { context.delete($0) }
+        let exerciseLogs = (try? context.fetch(FetchDescriptor<LocalExerciseLog>(predicate: #Predicate { $0.userId == uid }))) ?? []
+        exerciseLogs.forEach { context.delete($0) }
+        let routines = (try? context.fetch(FetchDescriptor<LocalRoutine>(predicate: #Predicate { $0.userId == uid }))) ?? []
+        routines.forEach { context.delete($0) }
+        let profiles = (try? context.fetch(FetchDescriptor<CachedUserProfile>(predicate: #Predicate { $0.userId == uid }))) ?? []
+        profiles.forEach { context.delete($0) }
+        try? context.save()
+    }
+
     // MARK: - Bootstrap
 
     func bootstrap(userId: String, context: ModelContext) async {
@@ -90,7 +115,8 @@ final class SyncService {
               let carb = r.macro_goal_carbs_g,
               let fat  = r.macro_goal_fat_g
         else { return }
-        let existing = try? context.fetch(FetchDescriptor<CachedUserProfile>())
+        let uid2 = userId
+        let existing = try? context.fetch(FetchDescriptor<CachedUserProfile>(predicate: #Predicate { $0.userId == uid2 }))
         existing?.forEach { context.delete($0) }
         context.insert(CachedUserProfile(
             userId:              userId,
@@ -118,7 +144,8 @@ final class SyncService {
     // MARK: - Fetch protocols (only if no local data)
 
     func fetchProtocols(userId: String, context: ModelContext) async {
-        let count = (try? context.fetchCount(FetchDescriptor<LocalProtocol>())) ?? 0
+        let uid3 = userId
+        let count = (try? context.fetchCount(FetchDescriptor<LocalProtocol>(predicate: #Predicate { $0.userId == uid3 }))) ?? 0
         guard count == 0 else { return }
 
         struct ProtoRow: Decodable, Sendable {
@@ -188,28 +215,29 @@ final class SyncService {
     // MARK: - Push all unsynced
 
     func pushUnsynced(userId: String, context: ModelContext) async {
+        let uid = userId
         if let logs = try? context.fetch(FetchDescriptor<LocalDoseLog>(
-            predicate: #Predicate { $0.syncedAt == nil }
+            predicate: #Predicate { $0.syncedAt == nil && $0.userId == uid }
         )) {
             for log in logs { await pushDoseLog(log, context: context) }
         }
         if let logs = try? context.fetch(FetchDescriptor<LocalFoodLog>(
-            predicate: #Predicate { $0.syncedAt == nil }
+            predicate: #Predicate { $0.syncedAt == nil && $0.userId == uid }
         )) {
             for log in logs { await pushFoodLog(log, context: context) }
         }
         if let logs = try? context.fetch(FetchDescriptor<LocalSideEffectLog>(
-            predicate: #Predicate { $0.syncedAt == nil }
+            predicate: #Predicate { $0.syncedAt == nil && $0.userId == uid }
         )) {
             for log in logs { await pushSideEffect(log, context: context) }
         }
         if let vials = try? context.fetch(FetchDescriptor<LocalVial>(
-            predicate: #Predicate { $0.syncedAt == nil }
+            predicate: #Predicate { $0.syncedAt == nil && $0.userId == uid }
         )) {
             for vial in vials { await pushVial(vial, context: context) }
         }
         if let workouts = try? context.fetch(FetchDescriptor<LocalWorkout>(
-            predicate: #Predicate { $0.syncedAt == nil }
+            predicate: #Predicate { $0.syncedAt == nil && $0.userId == uid }
         )) {
             for w in workouts { await pushWorkout(w, context: context) }
         }

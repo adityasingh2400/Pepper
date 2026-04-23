@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 
 struct TrackTabView: View {
+    @EnvironmentObject private var authManager: AuthManager
+
     enum Segment: String, CaseIterable {
         case workouts = "Workouts"
         case routines = "Routines"
@@ -10,6 +12,7 @@ struct TrackTabView: View {
     @State private var segment: Segment = .workouts
 
     var body: some View {
+        let userId = authManager.session?.user.id.uuidString ?? ""
         NavigationStack {
             VStack(spacing: 0) {
                 HStack(spacing: 6) {
@@ -32,9 +35,9 @@ struct TrackTabView: View {
                 Divider().overlay(Color.appBorder)
 
                 switch segment {
-                case .workouts: WorkoutDiaryView()
-                case .routines: RoutinesView()
-                case .sites:    InjectionSiteView()
+                case .workouts: WorkoutDiaryView(userId: userId)
+                case .routines: RoutinesView(userId: userId)
+                case .sites:    InjectionSiteView(userId: userId)
                 }
             }
             .background(Color.appBackground)
@@ -50,8 +53,14 @@ struct RoutinesView: View {
     @EnvironmentObject private var authManager: AuthManager
     @Environment(\.modelContext) private var ctx
 
-    @Query(sort: \LocalRoutine.createdAt, order: .reverse) private var routines: [LocalRoutine]
+    @Query private var routines: [LocalRoutine]
     @Query private var routineExercises: [LocalRoutineExercise]
+
+    init(userId: String) {
+        let uid = userId
+        _routines = Query(filter: #Predicate<LocalRoutine> { $0.userId == uid }, sort: \LocalRoutine.createdAt, order: .reverse)
+        _routineExercises = Query()
+    }
 
     @State private var showCreate = false
     @State private var editingRoutine: LocalRoutine? = nil
@@ -562,11 +571,16 @@ struct WorkoutDiaryView: View {
     @EnvironmentObject private var authManager: AuthManager
     @Environment(\.modelContext) private var ctx
 
-    @Query(sort: \LocalExerciseLog.loggedAt, order: .reverse)
-    private var allExerciseLogs: [LocalExerciseLog]
+    @Query private var allExerciseLogs: [LocalExerciseLog]
+    @Query private var allSets: [LocalWorkoutSet]
+    @Query private var allWorkoutLogs: [LocalWorkout]
 
-    @Query(sort: \LocalWorkoutSet.setNumber)
-    private var allSets: [LocalWorkoutSet]
+    init(userId: String) {
+        let uid = userId
+        _allExerciseLogs = Query(filter: #Predicate<LocalExerciseLog> { $0.userId == uid }, sort: \LocalExerciseLog.loggedAt, order: .reverse)
+        _allSets = Query(sort: \LocalWorkoutSet.setNumber)
+        _allWorkoutLogs = Query(filter: #Predicate<LocalWorkout> { $0.userId == uid }, sort: \LocalWorkout.loggedAt, order: .reverse)
+    }
 
     @State private var selectedDate = Date()
     @State private var showExerciseSearch = false
@@ -604,9 +618,6 @@ struct WorkoutDiaryView: View {
         let weekLogIds = Set(allExerciseLogs.filter { $0.loggedAt >= weekStart }.map { $0.id })
         return allSets.filter { weekLogIds.contains($0.exerciseLogId) }.count
     }
-
-    @Query(sort: \LocalWorkout.loggedAt, order: .reverse)
-    private var allWorkoutLogs: [LocalWorkout]
 
     var thisWeekCaloriesBurned: Int {
         guard let weekStart = Calendar.current.date(
@@ -697,7 +708,7 @@ struct WorkoutDiaryView: View {
             .padding(16)
         }
         .sheet(isPresented: $showExerciseSearch) {
-            ExerciseSearchSheet(selectedDate: selectedDate)
+            ExerciseSearchSheet(userId: authManager.session?.user.id.uuidString ?? "", selectedDate: selectedDate)
                 .environmentObject(authManager)
         }
         .sheet(isPresented: $showLogWorkout) {
@@ -828,8 +839,13 @@ struct ExerciseSearchSheet: View {
     @State private var selectedExercise: ExerciseDefinition? = nil
     @FocusState private var focused: Bool
 
-    @Query(sort: \LocalExerciseLog.loggedAt, order: .reverse)
-    private var recentLogs: [LocalExerciseLog]
+    @Query private var recentLogs: [LocalExerciseLog]
+
+    init(userId: String, selectedDate: Date) {
+        self.selectedDate = selectedDate
+        let uid = userId
+        _recentLogs = Query(filter: #Predicate<LocalExerciseLog> { $0.userId == uid }, sort: \LocalExerciseLog.loggedAt, order: .reverse)
+    }
 
     private let categories = ["All", "Chest", "Back", "Legs", "Shoulders", "Arms", "Core", "Cardio"]
 
@@ -1244,11 +1260,15 @@ struct SiteStatus {
 }
 
 struct InjectionSiteView: View {
-    @Query(sort: \LocalDoseLog.dosedAt, order: .reverse)
-    private var allDoses: [LocalDoseLog]
+    @Query private var allDoses: [LocalDoseLog]
 
     @EnvironmentObject private var authManager: AuthManager
     @Environment(\.modelContext) private var ctx
+
+    init(userId: String) {
+        let uid = userId
+        _allDoses = Query(filter: #Predicate<LocalDoseLog> { $0.userId == uid }, sort: \LocalDoseLog.dosedAt, order: .reverse)
+    }
 
     @State private var selectedSite: String? = nil
     @State private var showingBack = false
@@ -1362,7 +1382,7 @@ struct InjectionSiteView: View {
             get: { selectedSite.map { SiteWrapper(site: $0) } },
             set: { selectedSite = $0?.site }
         )) { wrapper in
-            SiteDetailSheet(site: wrapper.site)
+            SiteDetailSheet(userId: authManager.session?.user.id.uuidString ?? "", site: wrapper.site)
                 .environmentObject(authManager)
                 .environment(\.modelContext, ctx)
         }
@@ -1493,13 +1513,17 @@ struct SiteDetailSheet: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.dismiss) private var dismiss
 
-    @Query(sort: \LocalDoseLog.dosedAt, order: .reverse)
-    private var allDoses: [LocalDoseLog]
-
-    @Query(filter: #Predicate<LocalProtocol> { $0.isActive })
-    private var activeProtos: [LocalProtocol]
-
+    @Query private var allDoses: [LocalDoseLog]
+    @Query private var activeProtos: [LocalProtocol]
     @Query private var allCompounds: [LocalProtocolCompound]
+
+    init(userId: String, site: String) {
+        self.site = site
+        let uid = userId
+        _allDoses = Query(filter: #Predicate<LocalDoseLog> { $0.userId == uid }, sort: \LocalDoseLog.dosedAt, order: .reverse)
+        _activeProtos = Query(filter: #Predicate<LocalProtocol> { $0.isActive && $0.userId == uid })
+        _allCompounds = Query()
+    }
 
     @State private var showLogSheet = false
     @State private var showSuccess = false

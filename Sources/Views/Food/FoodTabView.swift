@@ -90,7 +90,7 @@ struct FoodTabView: View {
                 Divider().overlay(Color.appBorder)
 
                 switch tab {
-                case .log:  FoodLogView()
+                case .log:  FoodLogView(userId: authManager.session?.user.id.uuidString ?? "")
                 case .scan: ScanTabView(
                     showScanner: $showScanner,
                     onItemFound: { item in showFoodDetail = item },
@@ -450,10 +450,14 @@ struct FoodLogView: View {
     @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var purchases: PurchasesManager
 
-    @Query(sort: \LocalFoodLog.loggedAt, order: .reverse)
-    private var allLogs: [LocalFoodLog]
-
+    @Query private var allLogs: [LocalFoodLog]
     @Query private var profileCache: [CachedUserProfile]
+
+    init(userId: String) {
+        let uid = userId
+        _allLogs = Query(filter: #Predicate<LocalFoodLog> { $0.userId == uid }, sort: \LocalFoodLog.loggedAt, order: .reverse)
+        _profileCache = Query(filter: #Predicate<CachedUserProfile> { $0.userId == uid })
+    }
 
     @State private var searchMeal: FoodMeal? = nil
     @State private var selectedDate = Date()
@@ -569,7 +573,7 @@ struct FoodLogView: View {
             .padding(16)
         }
         .sheet(item: $searchMeal) { meal in
-            FoodSearchSheet(meal: meal)
+            FoodSearchSheet(userId: authManager.session?.user.id.uuidString ?? "", meal: meal)
                 .environmentObject(authManager)
         }
         .sheet(isPresented: $showPaywall) {
@@ -790,8 +794,13 @@ struct FoodSearchSheet: View {
     @State private var showManual = false
     @FocusState private var focused: Bool
 
-    @Query(sort: \LocalFoodLog.loggedAt, order: .reverse)
-    private var recentLogs: [LocalFoodLog]
+    @Query private var recentLogs: [LocalFoodLog]
+
+    init(userId: String, meal: FoodMeal = .snack) {
+        self.meal = meal
+        let uid = userId
+        _recentLogs = Query(filter: #Predicate<LocalFoodLog> { $0.userId == uid }, sort: \LocalFoodLog.loggedAt, order: .reverse)
+    }
 
     private var recentUnique: [LocalFoodLog] {
         var seen = Set<String>()

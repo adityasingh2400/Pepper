@@ -35,12 +35,14 @@
 		68DAD0A97CA52989F1A69391 /* GoalDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77F02C3985AE4EDAEB4A311B /* GoalDetector.swift */; };
 		6BD841B514DE4AABAEDA3773 /* OnboardingCreateAccountView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8240F06BC312D3478B2E2F66 /* OnboardingCreateAccountView.swift */; };
 		6EE97F7B9AB12AF4F5C4C477 /* FoodTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22B36B0B6D4699B48F500610 /* FoodTabView.swift */; };
+		71E65E82A928CA197FB90BD1 /* InjectionTrackerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 828034A37EDD7E4E4253CFD1 /* InjectionTrackerView.swift */; };
 		7546DB80CD5A3A000505D8E1 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB0150D0E02B61CFA97BBFEA /* AppState.swift */; };
 		75A4A165E409C941532C83A4 /* GoalDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97C5E275C05D9FB99B4A611F /* GoalDetectorTests.swift */; };
 		7D72DB8F68ABF974A67C9E09 /* Citation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 076A91AAB121FA0493A27AE2 /* Citation.swift */; };
 		7F0AF604F49071432B1A0D87 /* PrivacyPolicyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEA62E288498A45ECB24D384 /* PrivacyPolicyView.swift */; };
 		8000882C43C1A7CC1DE2E3A7 /* NudgeEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5749C3D684B1992D8AE65B5F /* NudgeEngine.swift */; };
 		809B45E7BA962701EB4216F5 /* VoiceNavigatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF2EA280BEF4E2AB842C676D /* VoiceNavigatorView.swift */; };
+		8823B02EBAD0DA63BB007F0A /* body.obj in Resources */ = {isa = PBXBuildFile; fileRef = 7127D517CEB76E0DE852E313 /* body.obj */; };
 		8881F38842433B366966770D /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E90F5C9CC4F01BEAFFFC864 /* MainTabView.swift */; };
 		892124118AD69972FB39F762 /* OnboardingTrialView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F85AE984B455CD7B3002A97 /* OnboardingTrialView.swift */; };
 		8B84FA222086FE66EA43940A /* PeptideTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C28C870AF0B99649B38270C /* PeptideTimelineView.swift */; };
@@ -54,6 +56,7 @@
 		AA3E1A7BDCBA23D6AB9BDF00 /* ElevenLabsTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14FAFC0F5F4132FBDFCBF8F2 /* ElevenLabsTTSService.swift */; };
 		ABF44F7A0831BD322DE640A3 /* NotesImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C46D439AB4656A15BB6D9283 /* NotesImportView.swift */; };
 		AE52EB46C2F4E043B174BBE6 /* NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 307D6C67FEE3B5A964C881E7 /* NotificationScheduler.swift */; };
+		AED7CBB79B4165C6BF4C2F02 /* body.glb in Resources */ = {isa = PBXBuildFile; fileRef = EA9A178DE37346A62C3CFA39 /* body.glb */; };
 		AF825FC006426E88FCAFFE47 /* PeptideApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78D52DE6232789F2ED1E60EE /* PeptideApp.swift */; };
 		B07D91F7CD756A014CE7939F /* lottie_success.json in Resources */ = {isa = PBXBuildFile; fileRef = 0A36C84F71999C76F3086939 /* lottie_success.json */; };
 		B351BF0B1DABD8ED6534FDF7 /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31ACAA9EE356CB22FDD6D04A /* AuthManager.swift */; };
@@ -79,12 +82,12 @@
 		EA130F1EF1600AD22B036522 /* PostHog in Frameworks */ = {isa = PBXBuildFile; productRef = A417C4F2E3ECF95B02E08DCB /* PostHog */; };
 		EAA3579483953D71C5B20780 /* Compound.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DB6327A6B6BE70607338173 /* Compound.swift */; };
 		EB2253F1F4ECCE438EB5E477 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 058D4DB3BB7FB5A2E2FDCF32 /* Assets.xcassets */; };
-		F1CA442814B442562B147FF6 /* APIKeys.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B564722A3686BFAA42F39AD /* APIKeys.swift */; };
 		F1F465BEEF7BF4E117DA70B7 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2EE90CF0787BD8DC1D4F59A /* SettingsView.swift */; };
 		F4CD50DC0AF911687607B99D /* VoiceIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08E994D55DE0711618AF440C /* VoiceIntent.swift */; };
 		F94374DCCDC4CE7A4F271880 /* SupabaseClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15DB48CB21F5DA7F35B6966C /* SupabaseClient.swift */; };
 		FA3E8941D92A6B833F61C372 /* DosingCalculatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09AB6425F051690375637C19 /* DosingCalculatorView.swift */; };
 		FBE740CF4A901B737C9BEEAA /* Analytics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A13A112102DD1749034842B /* Analytics.swift */; };
+		FBF6C41E487C312209DE72F4 /* body.usdz in Resources */ = {isa = PBXBuildFile; fileRef = C4DB376F44090095539A76C3 /* body.usdz */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -122,7 +125,6 @@
 		307D6C67FEE3B5A964C881E7 /* NotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationScheduler.swift; sourceTree = "<group>"; };
 		31ACAA9EE356CB22FDD6D04A /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		33ADA76A6D88E5EF9202B08A /* DosingFormula.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DosingFormula.swift; sourceTree = "<group>"; };
-		3B564722A3686BFAA42F39AD /* APIKeys.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeys.swift; sourceTree = "<group>"; };
 		3C28C870AF0B99649B38270C /* PeptideTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeptideTimelineView.swift; sourceTree = "<group>"; };
 		44590837E2D24B259E42580E /* StackRecommender.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StackRecommender.swift; sourceTree = "<group>"; };
 		452EA4D408F6C222548AFE28 /* SwiftDataModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftDataModels.swift; sourceTree = "<group>"; };
@@ -139,12 +141,14 @@
 		642C8EDF9F10373D5E8F1B1F /* CompoundCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompoundCatalog.swift; sourceTree = "<group>"; };
 		648CAF1BCC80EE0DA43023CC /* PepperContextBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PepperContextBuilder.swift; sourceTree = "<group>"; };
 		66065355EBBA201EE7E69E6A /* BACProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BACProtocol.swift; sourceTree = "<group>"; };
+		7127D517CEB76E0DE852E313 /* body.obj */ = {isa = PBXFileReference; path = body.obj; sourceTree = "<group>"; };
 		714AF4E8BC9F1C775607B76B /* LottieView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LottieView.swift; sourceTree = "<group>"; };
 		71A1FC4EE0034C6A557A5506 /* OpenFoodFactsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenFoodFactsService.swift; sourceTree = "<group>"; };
 		77F02C3985AE4EDAEB4A311B /* GoalDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoalDetector.swift; sourceTree = "<group>"; };
 		78D52DE6232789F2ED1E60EE /* PeptideApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeptideApp.swift; sourceTree = "<group>"; };
 		79AE3A764B3513CBBD071C8A /* PeptideTimeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeptideTimeline.swift; sourceTree = "<group>"; };
 		8240F06BC312D3478B2E2F66 /* OnboardingCreateAccountView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingCreateAccountView.swift; sourceTree = "<group>"; };
+		828034A37EDD7E4E4253CFD1 /* InjectionTrackerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjectionTrackerView.swift; sourceTree = "<group>"; };
 		82FA4DB407C883FA11232C39 /* PinSite.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinSite.swift; sourceTree = "<group>"; };
 		83EF1C2877E8A8C14B12F176 /* NavigationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationCoordinator.swift; sourceTree = "<group>"; };
 		8629AC5349E466A634E49CB9 /* ColorExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorExtension.swift; sourceTree = "<group>"; };
@@ -163,6 +167,7 @@
 		B70DE10DCE171796021BF002 /* AnatomicalBodyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnatomicalBodyView.swift; sourceTree = "<group>"; };
 		B8CC931265A088C667DF63CF /* PeptideTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PeptideTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C46D439AB4656A15BB6D9283 /* NotesImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotesImportView.swift; sourceTree = "<group>"; };
+		C4DB376F44090095539A76C3 /* body.usdz */ = {isa = PBXFileReference; lastKnownFileType = file.usdz; path = body.usdz; sourceTree = "<group>"; };
 		C4ED62FCBA3553F8E2C49ED3 /* MacroTrendChart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacroTrendChart.swift; sourceTree = "<group>"; };
 		C81281B996D0E617F44A085F /* ProtocolTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProtocolTabView.swift; sourceTree = "<group>"; };
 		C9E1301F2BAD3501B0C4BB17 /* PinningProtocolView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinningProtocolView.swift; sourceTree = "<group>"; };
@@ -173,8 +178,9 @@
 		DFD346FCAF6AADDF330F4A97 /* APIKeys.swift.example */ = {isa = PBXFileReference; path = APIKeys.swift.example; sourceTree = "<group>"; };
 		E292BDD27FAC49022F969563 /* SyringeMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyringeMath.swift; sourceTree = "<group>"; };
 		E316347F2770670754F356D8 /* TrackTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackTabView.swift; sourceTree = "<group>"; };
+		EA9A178DE37346A62C3CFA39 /* body.glb */ = {isa = PBXFileReference; path = body.glb; sourceTree = "<group>"; };
 		F7ADA16AA8D67B19118727DC /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
-		"TEMP_6F824813-B65D-4A64-BEF3-B22FE810733C" /* signing.local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = signing.local.xcconfig; sourceTree = "<group>"; };
+		"TEMP_88680B79-8D5D-490A-ABEE-8C21E807B5B2" /* signing.local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = signing.local.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -196,7 +202,6 @@
 		0F68A98D60EE1535FE6F1529 /* Supporting */ = {
 			isa = PBXGroup;
 			children = (
-				3B564722A3686BFAA42F39AD /* APIKeys.swift */,
 				DFD346FCAF6AADDF330F4A97 /* APIKeys.swift.example */,
 			);
 			path = Supporting;
@@ -366,6 +371,7 @@
 		CA487E671FFE0804BB40DCE1 /* Protocol */ = {
 			isa = PBXGroup;
 			children = (
+				828034A37EDD7E4E4253CFD1 /* InjectionTrackerView.swift */,
 				C81281B996D0E617F44A085F /* ProtocolTabView.swift */,
 			);
 			path = Protocol;
@@ -438,17 +444,20 @@
 			isa = PBXGroup;
 			children = (
 				058D4DB3BB7FB5A2E2FDCF32 /* Assets.xcassets */,
+				EA9A178DE37346A62C3CFA39 /* body.glb */,
+				7127D517CEB76E0DE852E313 /* body.obj */,
+				C4DB376F44090095539A76C3 /* body.usdz */,
 				0A36C84F71999C76F3086939 /* lottie_success.json */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
 		};
-		"TEMP_03783E5E-F31E-44F7-9F04-97478B55BA12" /* Pepper */ = {
+		"TEMP_47F22448-C4B5-401C-9229-AE4C72836F42" /* Peptide */ = {
 			isa = PBXGroup;
 			children = (
-				"TEMP_6F824813-B65D-4A64-BEF3-B22FE810733C" /* signing.local.xcconfig */,
+				"TEMP_88680B79-8D5D-490A-ABEE-8C21E807B5B2" /* signing.local.xcconfig */,
 			);
-			path = Pepper;
+			path = Peptide;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -548,6 +557,9 @@
 			files = (
 				C432D36EEFC8DFFE315EB3E8 /* APIKeys.swift.example in Resources */,
 				EB2253F1F4ECCE438EB5E477 /* Assets.xcassets in Resources */,
+				AED7CBB79B4165C6BF4C2F02 /* body.glb in Resources */,
+				8823B02EBAD0DA63BB007F0A /* body.obj in Resources */,
+				FBF6C41E487C312209DE72F4 /* body.usdz in Resources */,
 				B07D91F7CD756A014CE7939F /* lottie_success.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -571,7 +583,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F1CA442814B442562B147FF6 /* APIKeys.swift in Sources */,
 				FBE740CF4A901B737C9BEEAA /* Analytics.swift in Sources */,
 				C124B6C82F158DF46E109ED6 /* AnatomicalBodyView.swift in Sources */,
 				7546DB80CD5A3A000505D8E1 /* AppState.swift in Sources */,
@@ -591,6 +602,7 @@
 				6EE97F7B9AB12AF4F5C4C477 /* FoodTabView.swift in Sources */,
 				9E974CFFEAFAFE7B1F9771D8 /* GoalCategory.swift in Sources */,
 				68DAD0A97CA52989F1A69391 /* GoalDetector.swift in Sources */,
+				71E65E82A928CA197FB90BD1 /* InjectionTrackerView.swift in Sources */,
 				3595B0C2116E96258D63CE77 /* LottieView.swift in Sources */,
 				620DB762374BD554E02861BF /* MacroTrendChart.swift in Sources */,
 				8881F38842433B366966770D /* MainTabView.swift in Sources */,
@@ -682,7 +694,7 @@
 		};
 		394DEFBB905690069F45F343 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_6F824813-B65D-4A64-BEF3-B22FE810733C" /* signing.local.xcconfig */;
+			baseConfigurationReference = "TEMP_88680B79-8D5D-490A-ABEE-8C21E807B5B2" /* signing.local.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -757,7 +769,7 @@
 		};
 		48E29FE693B4811505754824 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = "TEMP_6F824813-B65D-4A64-BEF3-B22FE810733C" /* signing.local.xcconfig */;
+			baseConfigurationReference = "TEMP_88680B79-8D5D-490A-ABEE-8C21E807B5B2" /* signing.local.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;

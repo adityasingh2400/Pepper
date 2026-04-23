@@ -8,24 +8,25 @@ struct TodayView: View {
     @EnvironmentObject private var nav: NavigationCoordinator
     @Environment(\.modelContext) private var ctx
 
-    @Query(filter: #Predicate<LocalProtocol> { $0.isActive == true })
-    private var activeProtocols: [LocalProtocol]
-
-    @Query(sort: \LocalFoodLog.loggedAt, order: .reverse)
-    private var allFoodLogs: [LocalFoodLog]
-
-    @Query(sort: \LocalDoseLog.dosedAt, order: .reverse)
-    private var allDoseLogs: [LocalDoseLog]
-
-    @Query(sort: \LocalWorkout.loggedAt, order: .reverse)
-    private var allWorkouts: [LocalWorkout]
-
-    @Query(sort: \LocalSideEffectLog.loggedAt, order: .reverse)
-    private var allSideEffects: [LocalSideEffectLog]
-
+    @Query private var activeProtocols: [LocalProtocol]
+    @Query private var allFoodLogs: [LocalFoodLog]
+    @Query private var allDoseLogs: [LocalDoseLog]
+    @Query private var allWorkouts: [LocalWorkout]
+    @Query private var allSideEffects: [LocalSideEffectLog]
     @Query private var allVials: [LocalVial]
     @Query private var timingRules: [CachedTimingRule]
     @Query private var profileCache: [CachedUserProfile]
+
+    init(userId: String) {
+        let uid = userId
+        _activeProtocols = Query(filter: #Predicate<LocalProtocol> { $0.isActive == true && $0.userId == uid })
+        _allFoodLogs = Query(filter: #Predicate<LocalFoodLog> { $0.userId == uid }, sort: \LocalFoodLog.loggedAt, order: .reverse)
+        _allDoseLogs = Query(filter: #Predicate<LocalDoseLog> { $0.userId == uid }, sort: \LocalDoseLog.dosedAt, order: .reverse)
+        _allWorkouts = Query(filter: #Predicate<LocalWorkout> { $0.userId == uid }, sort: \LocalWorkout.loggedAt, order: .reverse)
+        _allSideEffects = Query(filter: #Predicate<LocalSideEffectLog> { $0.userId == uid }, sort: \LocalSideEffectLog.loggedAt, order: .reverse)
+        _allVials = Query(filter: #Predicate<LocalVial> { $0.userId == uid })
+        _profileCache = Query(filter: #Predicate<CachedUserProfile> { $0.userId == uid })
+    }
 
     @State private var plan: PartitionPlan? = nil
     @State private var showQuickSideEffect = false

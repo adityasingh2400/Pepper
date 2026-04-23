@@ -185,8 +185,12 @@ struct SymptomChip: View {
 // MARK: - Side Effect Correlation View
 
 struct SideEffectCorrelationView: View {
-    @Query(sort: \LocalSideEffectLog.loggedAt, order: .reverse)
-    private var logs: [LocalSideEffectLog]
+    @Query private var logs: [LocalSideEffectLog]
+
+    init(userId: String) {
+        let uid = userId
+        _logs = Query(filter: #Predicate<LocalSideEffectLog> { $0.userId == uid }, sort: \LocalSideEffectLog.loggedAt, order: .reverse)
+    }
 
     var correlations: [(compound: String, symptom: String, count: Int)] {
         var counts: [String: [String: Int]] = [:]
