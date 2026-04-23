@@ -1,10 +1,18 @@
 import SwiftUI
 
 struct ResearchListView: View {
+    @EnvironmentObject private var nav: NavigationCoordinator
+
     var body: some View {
         NavigationStack {
             EmbeddedResearchView()
                 .navigationTitle("Research")
+                .navigationDestination(item: $nav.researchPushedCompound) { compound in
+                    CompoundDetailView(compound: compound)
+                        .onAppear {
+                            Analytics.capture(.compoundViewed, properties: ["compound": compound.name])
+                        }
+                }
         }
     }
 }
@@ -127,12 +135,14 @@ struct CompoundRowView: View {
 
 struct CompoundDetailView: View {
     let compound: Compound
+    @State private var showDosingCalculator = false
+    @State private var showPinningProtocol  = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 // Header card
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 10) {
                     HStack {
                         Text(compound.name)
                             .font(.system(size: 22, weight: .black))
@@ -140,16 +150,22 @@ struct CompoundDetailView: View {
                         Spacer()
                         FDABadge(status: compound.fdaStatus)
                     }
-                    if let halfLife = compound.halfLifeHrs {
-                        Label("Half-life: \(halfLife < 24 ? "\(Int(halfLife))h" : "\(Int(halfLife/24))d")",
-                              systemImage: "clock")
-                            .font(.system(size: 13))
-                            .foregroundColor(Color.appTextTertiary)
+                    if let summary = compound.summaryMd {
+                        Text(summary)
+                            .font(.system(size: 14))
+                            .foregroundColor(Color.appTextSecondary)
+                            .lineSpacing(4)
                     }
-                    if let low = compound.dosingRangeLowMcg, let high = compound.dosingRangeHighMcg {
-                        Label("Dosing: \(Int(low))–\(Int(high)) mcg", systemImage: "syringe")
-                            .font(.system(size: 13))
-                            .foregroundColor(Color.appTextTertiary)
+                    HStack(spacing: 8) {
+                        if let low = compound.dosingRangeLowMcg, let high = compound.dosingRangeHighMcg {
+                            metaPill(systemImage: "syringe", text: "\(Int(low))–\(Int(high)) mcg")
+                        }
+                        if let freq = compound.dosingFrequency {
+                            metaPill(systemImage: "calendar", text: freq.capitalized)
+                        }
+                        if let temp = compound.storageTemp {
+                            metaPill(systemImage: "thermometer", text: temp.capitalized)
+                        }
                     }
                 }
                 .padding(16)
@@ -157,34 +173,51 @@ struct CompoundDetailView: View {
                 .cornerRadius(16)
                 .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.appBorder, lineWidth: 1))
 
-                // Summary
-                if let summary = compound.summaryMd {
-                    InfoSection(title: "Overview") {
-                        Text(summary)
-                            .font(.system(size: 14))
-                            .foregroundColor(Color.appTextSecondary)
-                            .lineSpacing(4)
+                // Pharmacokinetic timeline
+                if compound.timeline.hasAnyData {
+                    PeptideTimelineView(timeline: compound.timeline, mode: .expanded)
+                }
+
+                // Action row: dosing calc + pinning protocol
+                HStack(spacing: 10) {
+                    actionTile(
+                        title: "Dosing\nCalculator",
+                        systemImage: "function",
+                        accent: Color.appAccent
+                    ) {
+                        showDosingCalculator = true
+                    }
+                    actionTile(
+                        title: "Pinning\nProtocol",
+                        systemImage: "drop.triangle.fill",
+                        accent: Color(hex: "0f766e")
+                    ) {
+                        showPinningProtocol = true
                     }
                 }
 
                 // Benefits
-                InfoSection(title: "Benefits") {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(compound.benefits, id: \.self) { benefit in
-                            Label(benefit, systemImage: "checkmark.circle.fill")
-                                .font(.system(size: 13))
-                                .foregroundColor(Color.appTextSecondary)
+                if !compound.benefits.isEmpty {
+                    InfoSection(title: "Benefits") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(compound.benefits, id: \.self) { benefit in
+                                Label(benefit, systemImage: "checkmark.circle.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(Color.appTextSecondary)
+                            }
                         }
                     }
                 }
 
                 // Side effects
-                InfoSection(title: "Side Effects") {
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(compound.sideEffects, id: \.self) { effect in
-                            Label(effect, systemImage: "info.circle")
-                                .font(.system(size: 13))
-                                .foregroundColor(Color.appTextSecondary)
+                if !compound.sideEffects.isEmpty {
+                    InfoSection(title: "Side Effects") {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(compound.sideEffects, id: \.self) { effect in
+                                Label(effect, systemImage: "info.circle")
+                                    .font(.system(size: 13))
+                                    .foregroundColor(Color.appTextSecondary)
+                            }
                         }
                     }
                 }
@@ -210,6 +243,57 @@ struct CompoundDetailView: View {
         .background(Color.appBackground)
         .navigationTitle(compound.name)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showDosingCalculator) {
+            DosingCalculatorView(compound: compound)
+        }
+        .sheet(isPresented: $showPinningProtocol) {
+            PinningProtocolView(compound: compound)
+        }
+    }
+
+    private func metaPill(systemImage: String, text: String) -> some View {
+        Label(text, systemImage: systemImage)
+            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .foregroundColor(Color.appTextSecondary)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(
+                Capsule().fill(Color.appInputBackground)
+            )
+    }
+
+    private func actionTile(
+        title: String,
+        systemImage: String,
+        accent: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(accent.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: systemImage)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(accent)
+                }
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color.appTextPrimary)
+                    .multilineTextAlignment(.leading)
+                Spacer()
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity)
+            .background(Color.appCard)
+            .cornerRadius(14)
+            .overlay(
+                RoundedRectangle(cornerRadius: 14)
+                    .stroke(Color.appBorder, lineWidth: 0.5)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 

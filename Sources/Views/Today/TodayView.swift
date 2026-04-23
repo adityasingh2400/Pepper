@@ -5,6 +5,7 @@ struct TodayView: View {
     @EnvironmentObject private var authManager: AuthManager
     @EnvironmentObject private var purchases: PurchasesManager
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var nav: NavigationCoordinator
     @Environment(\.modelContext) private var ctx
 
     @Query(filter: #Predicate<LocalProtocol> { $0.isActive == true })
@@ -92,6 +93,14 @@ struct TodayView: View {
                         )
                     }
 
+                    // 5b. Active compound timelines (where you are on the PK curve right now)
+                    if let proto = activeProtocols.first, !proto.compounds.isEmpty {
+                        ActiveCompoundTimelinesCard(
+                            compounds: proto.compounds,
+                            recentDoses: allDoseLogs
+                        )
+                    }
+
                     // 6. Partition Plan
                     if let profile {
                         let compounds = activeProtocols.first?.compounds ?? []
@@ -157,6 +166,14 @@ struct TodayView: View {
                     .environmentObject(authManager)
             }
             .sheet(isPresented: $showQuickDose) {
+                QuickDoseLogSheet(
+                    compounds: activeProtocols.first?.compounds ?? [],
+                    vials: activeVials
+                )
+                .environmentObject(authManager)
+                .environmentObject(appState)
+            }
+            .sheet(isPresented: $nav.showQuickDoseLog) {
                 QuickDoseLogSheet(
                     compounds: activeProtocols.first?.compounds ?? [],
                     vials: activeVials
@@ -1500,6 +1517,103 @@ struct QuickDoseLogSheet: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Active Compound Timelines Card
+
+/// Shows the pharmacokinetic curve for each compound in the user's active protocol,
+/// anchored to the most recent dose so they can see "where they are" on the curve
+/// right now (peaking, decaying, fully cleared, etc.).
+struct ActiveCompoundTimelinesCard: View {
+    let compounds: [LocalProtocolCompound]
+    let recentDoses: [LocalDoseLog]
+
+    private struct Row: Identifiable {
+        let id = UUID()
+        let compound: Compound
+        let lastDosedAt: Date?
+    }
+
+    private var rows: [Row] {
+        // De-duplicate by compound name, then resolve against the catalog and pull the most recent dose.
+        var seen = Set<String>()
+        var out: [Row] = []
+        for c in compounds where !seen.contains(c.compoundName) {
+            seen.insert(c.compoundName)
+            guard let resolved = CompoundCatalog.compound(named: c.compoundName) else { continue }
+            guard resolved.timeline.hasAnyData else { continue }
+            let lastDose = recentDoses
+                .filter { $0.compoundName == c.compoundName }
+                .max(by: { $0.dosedAt < $1.dosedAt })
+                .map(\.dosedAt)
+            out.append(Row(compound: resolved, lastDosedAt: lastDose))
+        }
+        return out
+    }
+
+    var body: some View {
+        guard !rows.isEmpty else { return AnyView(EmptyView()) }
+        return AnyView(
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("ACTIVE WINDOWS")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundColor(Color.appTextMeta)
+                        .kerning(1.2)
+                    Spacer()
+                    Text("Live PK curves")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Color.appTextMeta)
+                }
+
+                VStack(spacing: 12) {
+                    ForEach(rows) { row in
+                        compoundRow(row)
+                    }
+                }
+            }
+            .padding(16)
+            .background(Color.appCard)
+            .cornerRadius(20)
+            .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.appBorder, lineWidth: 1))
+            .shadow(color: .black.opacity(0.04), radius: 6, y: 2)
+        )
+    }
+
+    private func compoundRow(_ row: Row) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(row.compound.name)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(Color.appTextPrimary)
+                Spacer()
+                if let lastDose = row.lastDosedAt {
+                    Text(relativeLabel(for: lastDose))
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color.appTextTertiary)
+                } else {
+                    Text("No doses yet")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(Color.appTextMeta)
+                }
+            }
+
+            PeptideTimelineView(
+                timeline: row.compound.timeline,
+                mode: .compact,
+                dosedAt: row.lastDosedAt
+            )
+        }
+    }
+
+    private func relativeLabel(for date: Date) -> String {
+        let elapsed = Date().timeIntervalSince(date)
+        let h = elapsed / 3600
+        if h < 1 { return "Dosed \(Int(elapsed / 60))m ago" }
+        if h < 24 { return "Dosed \(Int(h))h ago" }
+        let days = h / 24
+        return "Dosed \(Int(days))d ago"
     }
 }
 

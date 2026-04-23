@@ -3,56 +3,72 @@ import SwiftData
 
 struct MainTabView: View {
     @EnvironmentObject private var authManager: AuthManager
+    @StateObject private var nav = NavigationCoordinator()
     @Environment(\.modelContext) private var ctx
-    @State private var showPepper = false
-    @State private var selectedTab = 0
-
-    private let tabNames = ["today", "food", "protocol", "track", "research"]
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            TabView(selection: $selectedTab) {
+            TabView(selection: $nav.selectedTab) {
                 TodayView()
-                    .tabItem { Label("Today", systemImage: "house.fill") }
-                    .tag(0)
+                    .tabItem { Label(NavigationCoordinator.Tab.today.title,
+                                     systemImage: NavigationCoordinator.Tab.today.systemImage) }
+                    .tag(NavigationCoordinator.Tab.today)
 
                 FoodTabView()
-                    .tabItem { Label("Food", systemImage: "fork.knife") }
-                    .tag(1)
+                    .tabItem { Label(NavigationCoordinator.Tab.food.title,
+                                     systemImage: NavigationCoordinator.Tab.food.systemImage) }
+                    .tag(NavigationCoordinator.Tab.food)
 
                 ProtocolTabView()
-                    .tabItem { Label("Protocol", systemImage: "drop.fill") }
-                    .tag(2)
+                    .tabItem { Label(NavigationCoordinator.Tab.protocol.title,
+                                     systemImage: NavigationCoordinator.Tab.protocol.systemImage) }
+                    .tag(NavigationCoordinator.Tab.protocol)
 
                 TrackTabView()
-                    .tabItem { Label("Track", systemImage: "figure.strengthtraining.traditional") }
-                    .tag(3)
+                    .tabItem { Label(NavigationCoordinator.Tab.track.title,
+                                     systemImage: NavigationCoordinator.Tab.track.systemImage) }
+                    .tag(NavigationCoordinator.Tab.track)
 
                 ResearchListView()
-                    .tabItem { Label("Research", systemImage: "books.vertical.fill") }
-                    .tag(4)
+                    .tabItem { Label(NavigationCoordinator.Tab.research.title,
+                                     systemImage: NavigationCoordinator.Tab.research.systemImage) }
+                    .tag(NavigationCoordinator.Tab.research)
             }
             .tint(Color(hex: "9f1239"))
             .task(id: authManager.session?.user.id) {
                 guard let userId = authManager.session?.user.id.uuidString else { return }
                 await SyncService.shared.bootstrap(userId: userId, context: ctx)
             }
-            .onChange(of: selectedTab) { _, newTab in
-                Analytics.capture(.tabViewed, properties: ["tab": tabNames[newTab]])
-            }
+            .environmentObject(nav)
 
-            PepperBubbleButton(showPepper: $showPepper)
-                .padding(.trailing, 20)
-                .padding(.bottom, 90)
+            // Floating action stack: voice navigator + Pepper bubble
+            VStack(spacing: 12) {
+                FloatingMicButton()
+                PepperBubbleButton(showPepper: $nav.showPepper)
+            }
+            .padding(.trailing, 20)
+            .padding(.bottom, 90)
+            .environmentObject(nav)
         }
-        .sheet(isPresented: $showPepper) {
+        .sheet(isPresented: $nav.showPepper) {
             AskPepperView()
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
                 .presentationCornerRadius(28)
                 .presentationBackground(Color.appBackground)
         }
-        .onChange(of: showPepper) { _, opened in
+        .fullScreenCover(isPresented: $nav.showVoiceNavigator) {
+            VoiceNavigatorView()
+                .environmentObject(nav)
+                .presentationBackground(.clear)
+        }
+        .sheet(item: $nav.dosingCalculatorCompound) { compound in
+            DosingCalculatorView(compound: compound)
+        }
+        .sheet(item: $nav.pinningProtocolCompound) { compound in
+            PinningProtocolView(compound: compound)
+        }
+        .onChange(of: nav.showPepper) { _, opened in
             if opened { Analytics.capture(.pepperOpened) }
         }
     }

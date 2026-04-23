@@ -245,6 +245,9 @@ struct PepperChatView: View {
     @State private var inputText = ""
     @State private var scrollProxy: ScrollViewProxy? = nil
     @FocusState private var inputFocused: Bool
+    /// Listens for voice-navigator → "ask pepper" handoffs.
+    private let seedPromptPublisher = NotificationCenter.default
+        .publisher(for: .pepperSeedPrompt)
 
     private let quickActions = [
         "How am I doing today?",
@@ -384,6 +387,14 @@ struct PepperChatView: View {
                     Image(systemName: "square.and.pencil")
                         .foregroundColor(Color.appAccent)
                 }
+            }
+        }
+        .onReceive(seedPromptPublisher) { note in
+            guard let prompt = note.userInfo?["prompt"] as? String,
+                  !prompt.isEmpty else { return }
+            // Defer one tick so the sheet has time to render before we send.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                sendMessage(prompt)
             }
         }
     }

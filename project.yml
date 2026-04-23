@@ -48,7 +48,22 @@ targets:
       - package: PostHog
         product: PostHog
     scheme:
-      testTargets: []
+      testTargets:
+        - PeptideTests
+
+  PeptideTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: Peptide
+    settings:
+      base:
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Peptide.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Peptide"
+        SWIFT_VERSION: "6.0"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
 
 packages:
   Supabase:

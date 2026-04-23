@@ -5,6 +5,10 @@ import SwiftUI
 /// Type or tap chips for everyone else.
 struct CompoundPickerView: View {
     @Binding var selected: Set<String>
+    /// Optional: compounds the user is most likely to want, based on their goal
+    /// selection. Shown in a dedicated "Recommended" row at the top.
+    var recommendedCompounds: [Compound] = []
+
     @StateObject private var voice = VoiceRecognitionService()
     @State private var search: String = ""
     @State private var showAll: Bool = false
@@ -16,6 +20,10 @@ struct CompoundPickerView: View {
 
                 if !selected.isEmpty {
                     selectedSection
+                }
+
+                if !recommendedCompounds.isEmpty && search.isEmpty {
+                    recommendedSection
                 }
 
                 searchField
@@ -45,6 +53,29 @@ struct CompoundPickerView: View {
         }
         .onChange(of: voice.transcript) { _, newValue in
             applyVoiceMatches(from: newValue)
+        }
+    }
+
+    // MARK: - Recommended section
+
+    private var recommendedSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .foregroundColor(Color.appAccent)
+                    .font(.system(size: 12, weight: .semibold))
+                Text("RECOMMENDED FOR YOU")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(Color.appTextMeta)
+                    .kerning(1.2)
+            }
+            FlowLayout(spacing: 8, lineSpacing: 8) {
+                ForEach(recommendedCompounds.prefix(8), id: \.id) { c in
+                    CompoundChip(label: c.name, selected: selected.contains(c.name)) {
+                        toggle(c.name)
+                    }
+                }
+            }
         }
     }
 

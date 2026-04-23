@@ -43,6 +43,8 @@ final class OnboardingViewModel: ObservableObject {
     // Step 12 — Protocol
     @Published var hasProtocol = false
     @Published var selectedCompounds: Set<String> = []
+    /// What the user wants from peptides. Used to recommend compounds in the picker.
+    @Published var peptideGoals: Set<String> = []
 
     static let commonCompounds: [String] = [
         "BPC-157", "TB-500", "CJC-1295", "Ipamorelin", "GHRP-2", "GHRP-6",
@@ -50,6 +52,21 @@ final class OnboardingViewModel: ObservableObject {
         "PT-141", "Melanotan II", "Thymosin Alpha-1", "GHK-Cu", "MK-677",
         "Hexarelin", "Selank", "Semax",
     ]
+
+    /// Compounds whose `goal_categories` overlap any of the user's selected peptide goals.
+    /// Sorted by overlap count (descending), then alphabetically. Used by the picker to
+    /// surface a "Recommended for you" row.
+    var recommendedCompounds: [Compound] {
+        guard !peptideGoals.isEmpty else { return [] }
+        let scored = Compound.seedData.compactMap { c -> (Compound, Int)? in
+            let overlap = c.goalCategories.filter(peptideGoals.contains).count
+            return overlap > 0 ? (c, overlap) : nil
+        }
+        return scored.sorted {
+            if $0.1 != $1.1 { return $0.1 > $1.1 }
+            return $0.0.name < $1.0.name
+        }.map(\.0)
+    }
 
     // Kept for backward compat with OnboardingTrialView / MacroMode
     @Published var macroMode: MacroMode = .auto
@@ -941,21 +958,23 @@ private struct Step9EatingStyleView: View {
     }
 }
 
-// MARK: - Step 10: Protocol (two-phase: yes/no → compound picker)
+// MARK: - Step 10: Protocol (three-phase: yes/no → goals → compound picker)
 
 private struct Step10ProtocolView: View {
     @ObservedObject var vm: OnboardingViewModel
-    @State private var showCompoundPicker = false
+    @State private var phase: Phase = .yesNo
+
+    enum Phase { case yesNo, goals, picker }
 
     var body: some View {
         VStack(spacing: 0) {
-            if showCompoundPicker {
-                compoundPicker
-            } else {
-                yesNoView
+            switch phase {
+            case .yesNo:  yesNoView
+            case .goals:  goalsView
+            case .picker: compoundPicker
             }
         }
-        .animation(.easeInOut(duration: 0.22), value: showCompoundPicker)
+        .animation(.easeInOut(duration: 0.22), value: phase)
     }
 
     private var yesNoView: some View {
@@ -966,11 +985,11 @@ private struct Step10ProtocolView: View {
             VStack(spacing: 12) {
                 Button {
                     vm.hasProtocol = true
-                    withAnimation { showCompoundPicker = true }
+                    withAnimation { phase = .goals }
                 } label: {
                     SelectionCard(title: "Yes",
                                   subtitle: "I'm currently using peptides",
-                                  isSelected: vm.hasProtocol == true && showCompoundPicker)
+                                  isSelected: vm.hasProtocol == true && phase != .yesNo)
                 }
 
                 Button {
@@ -993,12 +1012,25 @@ private struct Step10ProtocolView: View {
         }
     }
 
+    private var goalsView: some View {
+        OnboardingGoalsView(
+            selected: $vm.peptideGoals,
+            onContinue: { withAnimation { phase = .picker } },
+            onSkip: { withAnimation { phase = .picker } }
+        )
+    }
+
     private var compoundPicker: some View {
         VStack(spacing: 0) {
             QuestionHeader(question: "Which compounds?",
-                           subtitle: "Tap the mic and say them, or pick below.")
+                           subtitle: vm.peptideGoals.isEmpty
+                                ? "Tap the mic and say them, or pick below."
+                                : "Tap the mic, or pick from your recommendations.")
 
-            CompoundPickerView(selected: $vm.selectedCompounds)
+            CompoundPickerView(
+                selected: $vm.selectedCompounds,
+                recommendedCompounds: vm.recommendedCompounds
+            )
         }
         .safeAreaInset(edge: .bottom) {
             ContinueButton {

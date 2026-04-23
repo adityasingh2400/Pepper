@@ -1,6 +1,8 @@
 import Foundation
 
-struct Compound: Codable, Identifiable {
+// MARK: - Compound (decoder-friendly, all v2 fields optional for forward compat)
+
+struct Compound: Codable, Identifiable, Hashable {
     let id: UUID
     let name: String
     let slug: String
@@ -13,90 +15,137 @@ struct Compound: Codable, Identifiable {
     let fdaStatus: FDAStatus
     let summaryMd: String?
 
-    enum FDAStatus: String, Codable {
+    // v1.5 metadata
+    let goalCategories: [String]
+    let administrationRoutes: [String]
+    let timeToEffectHours: Double?
+    let peakEffectHours: Double?
+    let durationHours: Double?
+    let dosingFormula: String?
+    let dosingUnit: String?
+    let dosingFrequency: String?
+    let bacWaterMlDefault: Double?
+    let storageTemp: String?
+    let storageMaxDays: Int?
+    let needleGaugeDefault: String?
+    let needleLengthDefault: String?
+    let recommendedSiteIds: [String]
+
+    enum FDAStatus: String, Codable, Hashable {
         case research, grey, approved
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, name, slug
-        case halfLifeHrs = "half_life_hrs"
-        case dosingRangeLowMcg = "dosing_range_low_mcg"
+        case id, name, slug, benefits
+        case halfLifeHrs        = "half_life_hrs"
+        case dosingRangeLowMcg  = "dosing_range_low_mcg"
         case dosingRangeHighMcg = "dosing_range_high_mcg"
-        case benefits
-        case sideEffects = "side_effects"
-        case stackingNotes = "stacking_notes"
-        case fdaStatus = "fda_status"
-        case summaryMd = "summary_md"
+        case sideEffects        = "side_effects"
+        case stackingNotes      = "stacking_notes"
+        case fdaStatus          = "fda_status"
+        case summaryMd          = "summary_md"
+        case goalCategories     = "goal_categories"
+        case administrationRoutes = "administration_routes"
+        case timeToEffectHours  = "time_to_effect_hours"
+        case peakEffectHours    = "peak_effect_hours"
+        case durationHours      = "duration_hours"
+        case dosingFormula      = "dosing_formula"
+        case dosingUnit         = "dosing_unit"
+        case dosingFrequency    = "dosing_frequency"
+        case bacWaterMlDefault  = "bac_water_ml_default"
+        case storageTemp        = "storage_temp"
+        case storageMaxDays     = "storage_max_days"
+        case needleGaugeDefault = "needle_gauge_default"
+        case needleLengthDefault = "needle_length_default"
+        case recommendedSiteIds = "recommended_site_ids"
+    }
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        slug: String,
+        halfLifeHrs: Double? = nil,
+        dosingRangeLowMcg: Double? = nil,
+        dosingRangeHighMcg: Double? = nil,
+        benefits: [String] = [],
+        sideEffects: [String] = [],
+        stackingNotes: String? = nil,
+        fdaStatus: FDAStatus = .research,
+        summaryMd: String? = nil,
+        goalCategories: [String] = [],
+        administrationRoutes: [String] = ["subq"],
+        timeToEffectHours: Double? = nil,
+        peakEffectHours: Double? = nil,
+        durationHours: Double? = nil,
+        dosingFormula: String? = nil,
+        dosingUnit: String? = "mcg",
+        dosingFrequency: String? = "daily",
+        bacWaterMlDefault: Double? = 2.0,
+        storageTemp: String? = "refrigerated",
+        storageMaxDays: Int? = 30,
+        needleGaugeDefault: String? = "29G",
+        needleLengthDefault: String? = "1/2 inch",
+        recommendedSiteIds: [String] = []
+    ) {
+        self.id = id
+        self.name = name
+        self.slug = slug
+        self.halfLifeHrs = halfLifeHrs
+        self.dosingRangeLowMcg = dosingRangeLowMcg
+        self.dosingRangeHighMcg = dosingRangeHighMcg
+        self.benefits = benefits
+        self.sideEffects = sideEffects
+        self.stackingNotes = stackingNotes
+        self.fdaStatus = fdaStatus
+        self.summaryMd = summaryMd
+        self.goalCategories = goalCategories
+        self.administrationRoutes = administrationRoutes
+        self.timeToEffectHours = timeToEffectHours
+        self.peakEffectHours = peakEffectHours
+        self.durationHours = durationHours
+        self.dosingFormula = dosingFormula
+        self.dosingUnit = dosingUnit
+        self.dosingFrequency = dosingFrequency
+        self.bacWaterMlDefault = bacWaterMlDefault
+        self.storageTemp = storageTemp
+        self.storageMaxDays = storageMaxDays
+        self.needleGaugeDefault = needleGaugeDefault
+        self.needleLengthDefault = needleLengthDefault
+        self.recommendedSiteIds = recommendedSiteIds
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id                   = try c.decode(UUID.self, forKey: .id)
+        self.name                 = try c.decode(String.self, forKey: .name)
+        self.slug                 = try c.decode(String.self, forKey: .slug)
+        self.halfLifeHrs          = try c.decodeIfPresent(Double.self, forKey: .halfLifeHrs)
+        self.dosingRangeLowMcg    = try c.decodeIfPresent(Double.self, forKey: .dosingRangeLowMcg)
+        self.dosingRangeHighMcg   = try c.decodeIfPresent(Double.self, forKey: .dosingRangeHighMcg)
+        self.benefits             = (try? c.decode([String].self, forKey: .benefits)) ?? []
+        self.sideEffects          = (try? c.decode([String].self, forKey: .sideEffects)) ?? []
+        self.stackingNotes        = try c.decodeIfPresent(String.self, forKey: .stackingNotes)
+        self.fdaStatus            = (try? c.decode(FDAStatus.self, forKey: .fdaStatus)) ?? .research
+        self.summaryMd            = try c.decodeIfPresent(String.self, forKey: .summaryMd)
+        self.goalCategories       = (try? c.decode([String].self, forKey: .goalCategories)) ?? []
+        self.administrationRoutes = (try? c.decode([String].self, forKey: .administrationRoutes)) ?? ["subq"]
+        self.timeToEffectHours    = try c.decodeIfPresent(Double.self, forKey: .timeToEffectHours)
+        self.peakEffectHours      = try c.decodeIfPresent(Double.self, forKey: .peakEffectHours)
+        self.durationHours        = try c.decodeIfPresent(Double.self, forKey: .durationHours)
+        self.dosingFormula        = try c.decodeIfPresent(String.self, forKey: .dosingFormula)
+        self.dosingUnit           = try c.decodeIfPresent(String.self, forKey: .dosingUnit) ?? "mcg"
+        self.dosingFrequency      = try c.decodeIfPresent(String.self, forKey: .dosingFrequency) ?? "daily"
+        self.bacWaterMlDefault    = try c.decodeIfPresent(Double.self, forKey: .bacWaterMlDefault) ?? 2.0
+        self.storageTemp          = try c.decodeIfPresent(String.self, forKey: .storageTemp) ?? "refrigerated"
+        self.storageMaxDays       = try c.decodeIfPresent(Int.self, forKey: .storageMaxDays) ?? 30
+        self.needleGaugeDefault   = try c.decodeIfPresent(String.self, forKey: .needleGaugeDefault) ?? "29G"
+        self.needleLengthDefault  = try c.decodeIfPresent(String.self, forKey: .needleLengthDefault) ?? "1/2 inch"
+        self.recommendedSiteIds   = (try? c.decode([String].self, forKey: .recommendedSiteIds)) ?? []
     }
 }
 
-// Seed data for the gate submission — no Supabase needed for App Store review
+// MARK: - Hand-curated catalog (offline source of truth, mirrored to Supabase)
+
 extension Compound {
-    static let seedData: [Compound] = [
-        Compound(
-            id: UUID(),
-            name: "Ipamorelin",
-            slug: "ipamorelin",
-            halfLifeHrs: 2,
-            dosingRangeLowMcg: 100,
-            dosingRangeHighMcg: 300,
-            benefits: ["Growth hormone release", "Improved sleep quality", "Lean muscle support", "Fat loss"],
-            sideEffects: ["Mild hunger increase", "Water retention", "Headache (dose-dependent)"],
-            stackingNotes: "Commonly stacked with CJC-1295 for amplified GH pulse.",
-            fdaStatus: .research,
-            summaryMd: "Ipamorelin is a selective growth hormone secretagogue and ghrelin mimetic. It stimulates GH release without significantly affecting cortisol or prolactin, making it one of the cleaner options in the GH peptide class."
-        ),
-        Compound(
-            id: UUID(),
-            name: "CJC-1295",
-            slug: "cjc-1295",
-            halfLifeHrs: 168,
-            dosingRangeLowMcg: 100,
-            dosingRangeHighMcg: 200,
-            benefits: ["Sustained GH elevation", "Improved recovery", "Increased IGF-1"],
-            sideEffects: ["Water retention", "Fatigue", "Injection site reaction"],
-            stackingNotes: "Paired with Ipamorelin for synergistic GH pulse amplification.",
-            fdaStatus: .research,
-            summaryMd: "CJC-1295 (with DAC) is a long-acting GHRH analogue. The DAC (Drug Affinity Complex) extends half-life to approximately 7 days, allowing weekly dosing."
-        ),
-        Compound(
-            id: UUID(),
-            name: "BPC-157",
-            slug: "bpc-157",
-            halfLifeHrs: 4,
-            dosingRangeLowMcg: 250,
-            dosingRangeHighMcg: 500,
-            benefits: ["Tendon and ligament repair", "Gut health", "Anti-inflammatory", "Wound healing"],
-            sideEffects: ["Generally well tolerated", "Mild nausea (rare)"],
-            stackingNotes: "Can be stacked with TB-500 for enhanced tissue repair.",
-            fdaStatus: .research,
-            summaryMd: "BPC-157 (Body Protection Compound 157) is a synthetic peptide derived from a protein found in gastric juice. Primarily researched for tissue repair, particularly tendons, ligaments, and the GI tract."
-        ),
-        Compound(
-            id: UUID(),
-            name: "TB-500",
-            slug: "tb-500",
-            halfLifeHrs: 96,
-            dosingRangeLowMcg: 2000,
-            dosingRangeHighMcg: 5000,
-            benefits: ["Systemic tissue repair", "Reduced inflammation", "Improved flexibility", "Cardiovascular recovery"],
-            sideEffects: ["Fatigue", "Head rush", "Nausea at higher doses"],
-            stackingNotes: "Often combined with BPC-157 for comprehensive injury recovery.",
-            fdaStatus: .research,
-            summaryMd: "TB-500 is a synthetic version of Thymosin Beta-4, a naturally occurring peptide present in nearly all human cells. Research focuses on its role in cell migration, proliferation, and differentiation for tissue repair."
-        ),
-        Compound(
-            id: UUID(),
-            name: "Semaglutide",
-            slug: "semaglutide",
-            halfLifeHrs: 168,
-            dosingRangeLowMcg: 250,
-            dosingRangeHighMcg: 2400,
-            benefits: ["Significant weight loss", "Blood sugar regulation", "Appetite suppression", "Cardiovascular benefit"],
-            sideEffects: ["Nausea", "Vomiting", "Diarrhea", "Constipation", "Injection site reaction"],
-            stackingNotes: "Not typically stacked. Monitor for hypoglycemia if combining with other glucose-lowering agents.",
-            fdaStatus: .approved,
-            summaryMd: "Semaglutide is an FDA-approved GLP-1 receptor agonist (Ozempic, Wegovy). Originally developed for type 2 diabetes, it is now approved for chronic weight management. Weekly subcutaneous injection."
-        ),
-    ]
+    static let seedData: [Compound] = CompoundCatalog.allCompoundsSeed
 }

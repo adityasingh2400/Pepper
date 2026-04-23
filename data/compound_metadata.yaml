@@ -1,0 +1,717 @@
+# Compound metadata v1.5 — single source of truth for the 24-compound starter catalog.
+#
+# This file mirrors `Sources/Models/CompoundCatalog.swift -> allCompoundsSeed`.
+# Loaded into Supabase by `scripts/seed_compound_metadata.ts`.
+#
+# Schema: see supabase/migrations/20260421000001_compound_metadata_v2.sql
+#
+# Field reference:
+#   slug                     stable identifier
+#   name                     display name
+#   half_life_hrs            elimination half-life
+#   dosing_range_low_mcg     low end of single dose
+#   dosing_range_high_mcg    high end of single dose
+#   benefits                 array of bullet points
+#   side_effects             array of bullet points
+#   stacking_notes           free text
+#   fda_status               research | grey | approved
+#   summary_md               1-paragraph background
+#   goal_categories          array (recovery, growth, fat_loss, longevity,
+#                            cognitive, libido, skin_hair, immune, sleep)
+#   administration_routes    array (subq, im, oral, nasal)
+#   time_to_effect_hours     onset
+#   peak_effect_hours        Tmax
+#   duration_hours           approximate duration of action
+#   dosing_formula           safe expression: clamp(weightKg * X, lo, hi)
+#   dosing_unit              mcg | mg
+#   dosing_frequency         daily | 2x_weekly | 3x_weekly | weekly | as_needed
+#   bac_water_ml_default     default reconstitution volume
+#   storage_temp             refrigerated | frozen | room
+#   storage_max_days         shelf life after reconstitution
+#   needle_gauge_default     e.g. 29G
+#   needle_length_default    e.g. "1/2 inch"
+#   recommended_site_ids     array of pin_site ids (see PinSiteCatalog.swift)
+
+compounds:
+
+  # ── Healing & recovery ──────────────────────────────────────────────────
+  - slug: bpc-157
+    name: BPC-157
+    half_life_hrs: 4
+    dosing_range_low_mcg: 200
+    dosing_range_high_mcg: 750
+    benefits:
+      - Tendon and ligament repair
+      - Gut healing
+      - Anti-inflammatory
+      - Wound healing
+    side_effects:
+      - Generally well tolerated
+      - Mild nausea (rare)
+    stacking_notes: "Stacks well with TB-500 for systemic vs. local repair."
+    fda_status: research
+    summary_md: |
+      BPC-157 (Body Protection Compound 157) is a synthetic peptide derived from
+      a protein found in gastric juice. Best-studied for tendon/ligament healing
+      and GI recovery.
+    goal_categories: [recovery, skin_hair]
+    administration_routes: [subq, im]
+    time_to_effect_hours: 0.5
+    peak_effect_hours: 2
+    duration_hours: 6
+    dosing_formula: "clamp(weightKg * 5, 250, 750)"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    needle_gauge_default: 29G
+    needle_length_default: "1/2 inch"
+    recommended_site_ids:
+      - abdomen-subq-left
+      - abdomen-subq-right
+      - thigh-subq-left
+      - thigh-subq-right
+
+  - slug: tb-500
+    name: TB-500
+    half_life_hrs: 96
+    dosing_range_low_mcg: 2000
+    dosing_range_high_mcg: 5000
+    benefits:
+      - Systemic tissue repair
+      - Reduced inflammation
+      - Improved flexibility
+      - Cardiovascular recovery
+    side_effects:
+      - Fatigue
+      - Head rush
+      - Nausea at higher doses
+    stacking_notes: "Pairs with BPC-157 for comprehensive injury recovery."
+    fda_status: research
+    summary_md: |
+      TB-500 is a synthetic Thymosin Beta-4 fragment researched for cell
+      migration and tissue repair.
+    goal_categories: [recovery]
+    administration_routes: [subq, im]
+    time_to_effect_hours: 24
+    peak_effect_hours: 48
+    duration_hours: 168
+    dosing_formula: "clamp(weightKg * 30, 2000, 5000)"
+    dosing_unit: mcg
+    dosing_frequency: 2x_weekly
+    bac_water_ml_default: 3.0
+    storage_temp: refrigerated
+    storage_max_days: 60
+    needle_gauge_default: 29G
+    needle_length_default: "1/2 inch"
+    recommended_site_ids:
+      - abdomen-subq-left
+      - abdomen-subq-right
+      - glute-im-left
+      - glute-im-right
+
+  - slug: ghk-cu
+    name: GHK-Cu
+    half_life_hrs: 2
+    dosing_range_low_mcg: 1000
+    dosing_range_high_mcg: 3000
+    benefits:
+      - Skin regeneration
+      - Collagen production
+      - Hair growth
+      - Wound healing
+    side_effects:
+      - Injection-site irritation
+      - Skin discoloration (rare)
+    stacking_notes: "Often used topically; subq for systemic effects."
+    fda_status: research
+    summary_md: |
+      GHK-Cu is a copper-binding tripeptide researched for skin remodeling, hair
+      regrowth, and wound repair.
+    goal_categories: [skin_hair, recovery, longevity]
+    administration_routes: [subq]
+    time_to_effect_hours: 24
+    peak_effect_hours: 72
+    duration_hours: 168
+    dosing_formula: "1500"
+    dosing_unit: mcg
+    dosing_frequency: 3x_weekly
+    bac_water_ml_default: 3.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    needle_gauge_default: 29G
+    needle_length_default: "1/2 inch"
+    recommended_site_ids:
+      - abdomen-subq-left
+      - abdomen-subq-right
+
+  - slug: thymosin-alpha-1
+    name: Thymosin Alpha-1
+    half_life_hrs: 2
+    dosing_range_low_mcg: 800
+    dosing_range_high_mcg: 1600
+    benefits:
+      - Immune modulation
+      - Anti-viral support
+      - Reduced inflammation
+    side_effects:
+      - Injection site reaction
+      - Mild flu-like symptoms
+    stacking_notes: "Combine with TB-500 during recovery from viral illness."
+    fda_status: research
+    summary_md: |
+      Thymosin Alpha-1 (Tα1) is an immune-modulating peptide. Studied for
+      chronic viral infections and immune dysregulation.
+    goal_categories: [immune, recovery]
+    administration_routes: [subq]
+    time_to_effect_hours: 12
+    peak_effect_hours: 24
+    duration_hours: 72
+    dosing_formula: "1600"
+    dosing_unit: mcg
+    dosing_frequency: 2x_weekly
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids:
+      - abdomen-subq-left
+      - thigh-subq-left
+
+  # ── GH secretagogues ─────────────────────────────────────────────────────
+  - slug: ipamorelin
+    name: Ipamorelin
+    half_life_hrs: 2
+    dosing_range_low_mcg: 100
+    dosing_range_high_mcg: 300
+    benefits:
+      - GH release
+      - Improved sleep quality
+      - Lean muscle support
+      - Fat loss
+    side_effects:
+      - Mild hunger increase
+      - Water retention
+      - Headache
+    stacking_notes: "Commonly stacked with CJC-1295 for amplified GH pulse."
+    fda_status: research
+    summary_md: |
+      Ipamorelin is a selective ghrelin mimetic that stimulates GH without
+      significantly affecting cortisol or prolactin.
+    goal_categories: [growth, sleep, recovery]
+    administration_routes: [subq]
+    time_to_effect_hours: 0.25
+    peak_effect_hours: 0.5
+    duration_hours: 3
+    dosing_formula: "clamp(weightKg * 1.5, 100, 300)"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids:
+      - abdomen-subq-left
+      - abdomen-subq-right
+      - thigh-subq-left
+      - thigh-subq-right
+
+  - slug: cjc-1295
+    name: CJC-1295
+    half_life_hrs: 168
+    dosing_range_low_mcg: 100
+    dosing_range_high_mcg: 200
+    benefits:
+      - Sustained GH elevation
+      - Improved recovery
+      - Increased IGF-1
+    side_effects:
+      - Water retention
+      - Fatigue
+      - Injection site reaction
+    stacking_notes: "Pairs with Ipamorelin for amplified GH pulses."
+    fda_status: research
+    summary_md: |
+      CJC-1295 (with DAC) is a long-acting GHRH analogue. The DAC complex
+      extends half-life to ~7 days.
+    goal_categories: [growth, recovery]
+    administration_routes: [subq]
+    time_to_effect_hours: 6
+    peak_effect_hours: 24
+    duration_hours: 168
+    dosing_formula: "clamp(weightKg * 1.5, 100, 200)"
+    dosing_unit: mcg
+    dosing_frequency: weekly
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 60
+    recommended_site_ids:
+      - abdomen-subq-left
+      - abdomen-subq-right
+
+  - slug: sermorelin
+    name: Sermorelin
+    half_life_hrs: 0.2
+    dosing_range_low_mcg: 200
+    dosing_range_high_mcg: 500
+    benefits:
+      - Natural GH pulse
+      - Improved sleep
+      - Recovery
+    side_effects:
+      - Flushing
+      - Headache
+      - Injection site reaction
+    stacking_notes: "Pre-bed dosing aligns with the natural GH pulse."
+    fda_status: research
+    summary_md: |
+      Sermorelin is a short GHRH analogue. Stimulates pituitary GH release with
+      a fast on/off profile.
+    goal_categories: [growth, sleep, recovery]
+    administration_routes: [subq]
+    time_to_effect_hours: 0.25
+    peak_effect_hours: 0.5
+    duration_hours: 2
+    dosing_formula: "300"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids:
+      - abdomen-subq-left
+      - thigh-subq-left
+
+  - slug: tesamorelin
+    name: Tesamorelin
+    half_life_hrs: 0.5
+    dosing_range_low_mcg: 1000
+    dosing_range_high_mcg: 2000
+    benefits:
+      - Visceral fat reduction
+      - Improved lipid profile
+      - Cognitive benefits
+    side_effects:
+      - Injection site reaction
+      - Joint pain
+      - Insulin resistance
+    stacking_notes: "Best for visceral adiposity. Monitor blood glucose."
+    fda_status: approved
+    summary_md: |
+      Tesamorelin is an FDA-approved GHRH analogue used for HIV-associated
+      lipodystrophy. Off-label use for visceral fat.
+    goal_categories: [fat_loss, growth, cognitive]
+    administration_routes: [subq]
+    time_to_effect_hours: 0.5
+    peak_effect_hours: 1
+    duration_hours: 4
+    dosing_formula: "2000"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 14
+    recommended_site_ids:
+      - abdomen-subq-left
+      - abdomen-subq-right
+
+  - slug: ghrp-2
+    name: GHRP-2
+    half_life_hrs: 0.5
+    dosing_range_low_mcg: 100
+    dosing_range_high_mcg: 300
+    benefits: [GH release, Appetite stimulation, Lean muscle]
+    side_effects: [Increased prolactin, Cortisol bump, Hunger]
+    stacking_notes: "Synergistic with CJC-1295. More cortisol/prolactin than Ipamorelin."
+    fda_status: research
+    summary_md: |
+      GHRP-2 is a ghrelin mimetic with stronger GH release than Ipamorelin but
+      more cortisol/prolactin activity.
+    goal_categories: [growth]
+    administration_routes: [subq]
+    time_to_effect_hours: 0.25
+    peak_effect_hours: 0.5
+    duration_hours: 2
+    dosing_formula: "clamp(weightKg * 1.5, 100, 300)"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids: [abdomen-subq-left, thigh-subq-left]
+
+  - slug: ghrp-6
+    name: GHRP-6
+    half_life_hrs: 0.5
+    dosing_range_low_mcg: 100
+    dosing_range_high_mcg: 300
+    benefits: [GH release, Strong appetite, Connective tissue]
+    side_effects: [Strong hunger, Lethargy, Cortisol bump]
+    stacking_notes: "Best for those who want appetite increase. Heavier prolactin profile."
+    fda_status: research
+    summary_md: |
+      GHRP-6 is a ghrelin mimetic with the strongest appetite-stimulating effect
+      of the GHRP family.
+    goal_categories: [growth]
+    administration_routes: [subq]
+    time_to_effect_hours: 0.25
+    peak_effect_hours: 0.5
+    duration_hours: 2
+    dosing_formula: "200"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids: [abdomen-subq-left, thigh-subq-left]
+
+  - slug: hexarelin
+    name: Hexarelin
+    half_life_hrs: 1
+    dosing_range_low_mcg: 100
+    dosing_range_high_mcg: 200
+    benefits: [Strong GH pulse, Cardioprotective, Muscle]
+    side_effects: [Receptor desensitization, Cortisol bump]
+    stacking_notes: "Cycle on/off (4 weeks on, 4 off) to avoid desensitization."
+    fda_status: research
+    summary_md: |
+      Hexarelin gives the strongest GH pulse of the GHRPs but desensitizes
+      receptors with chronic use.
+    goal_categories: [growth, longevity]
+    administration_routes: [subq]
+    time_to_effect_hours: 0.25
+    peak_effect_hours: 0.5
+    duration_hours: 2
+    dosing_formula: "100"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids: [abdomen-subq-left, thigh-subq-left]
+
+  - slug: mk-677
+    name: MK-677
+    half_life_hrs: 24
+    dosing_range_low_mcg: 10000
+    dosing_range_high_mcg: 25000
+    benefits: [Sustained GH/IGF-1, Improved sleep, Appetite]
+    side_effects: [Water retention, Numb hands, Blood sugar elevation]
+    stacking_notes: "Oral – not injected. Take with or without food."
+    fda_status: research
+    summary_md: |
+      MK-677 (Ibutamoren) is an oral ghrelin mimetic. Daily dosing produces
+      sustained GH/IGF-1 elevation.
+    goal_categories: [growth, sleep]
+    administration_routes: [oral]
+    time_to_effect_hours: 1
+    peak_effect_hours: 2
+    duration_hours: 24
+    dosing_formula: "20000"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 0
+    storage_temp: room
+    storage_max_days: 365
+    recommended_site_ids: []
+
+  # ── Metabolic / fat loss ────────────────────────────────────────────────
+  - slug: tirzepatide
+    name: Tirzepatide
+    half_life_hrs: 120
+    dosing_range_low_mcg: 2500
+    dosing_range_high_mcg: 15000
+    benefits: [Significant weight loss, Glucose control, Improved insulin sensitivity]
+    side_effects: [Nausea, Constipation, Reflux, Fatigue]
+    stacking_notes: "Titrate up slowly (2.5mg → 5 → 7.5 → 10 → 12.5 → 15) to manage GI side effects."
+    fda_status: approved
+    summary_md: |
+      Tirzepatide is an FDA-approved dual GIP/GLP-1 agonist (Mounjaro/Zepbound).
+      Most effective GLP-1 class peptide for weight loss to date.
+    goal_categories: [fat_loss]
+    administration_routes: [subq]
+    time_to_effect_hours: 24
+    peak_effect_hours: 24
+    duration_hours: 168
+    dosing_formula: "clamp(2500 + weeksOnCycle * 1250, 2500, 15000)"
+    dosing_unit: mcg
+    dosing_frequency: weekly
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 28
+    recommended_site_ids: [abdomen-subq-left, abdomen-subq-right, thigh-subq-left, thigh-subq-right]
+
+  - slug: semaglutide
+    name: Semaglutide
+    half_life_hrs: 168
+    dosing_range_low_mcg: 250
+    dosing_range_high_mcg: 2400
+    benefits: [Weight loss, Blood sugar regulation, Appetite suppression, Cardiovascular benefit]
+    side_effects: [Nausea, Vomiting, Diarrhea, Constipation]
+    stacking_notes: "Titrate slowly. Monitor for hypoglycemia if combined with insulin."
+    fda_status: approved
+    summary_md: |
+      Semaglutide is an FDA-approved GLP-1 receptor agonist (Ozempic/Wegovy).
+      Originally for T2D, now approved for chronic weight management.
+    goal_categories: [fat_loss]
+    administration_routes: [subq]
+    time_to_effect_hours: 24
+    peak_effect_hours: 24
+    duration_hours: 168
+    dosing_formula: "clamp(250 + weeksOnCycle * 250, 250, 2400)"
+    dosing_unit: mcg
+    dosing_frequency: weekly
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 28
+    recommended_site_ids: [abdomen-subq-left, abdomen-subq-right, thigh-subq-left, thigh-subq-right]
+
+  - slug: aod-9604
+    name: AOD-9604
+    half_life_hrs: 0.5
+    dosing_range_low_mcg: 250
+    dosing_range_high_mcg: 500
+    benefits: [Lipolysis, Cartilage repair, Non-diabetogenic]
+    side_effects: [Generally mild, Injection site reaction]
+    stacking_notes: "Often combined with low-dose Ipamorelin for fat loss."
+    fda_status: research
+    summary_md: |
+      AOD-9604 is the C-terminal fragment of GH (residues 176–191). Researched
+      for lipolysis without GH's diabetogenic profile.
+    goal_categories: [fat_loss, recovery]
+    administration_routes: [subq]
+    time_to_effect_hours: 0.5
+    peak_effect_hours: 1
+    duration_hours: 4
+    dosing_formula: "300"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids: [abdomen-subq-left, abdomen-subq-right]
+
+  - slug: retatrutide
+    name: Retatrutide
+    half_life_hrs: 144
+    dosing_range_low_mcg: 2000
+    dosing_range_high_mcg: 12000
+    benefits: [Aggressive weight loss, GIP/GLP-1/Glucagon triple agonism, Glycemic control]
+    side_effects: [GI upset, Fatigue, Nausea]
+    stacking_notes: "Investigational. Titrate slowly."
+    fda_status: research
+    summary_md: |
+      Retatrutide is a triple GIP/GLP-1/Glucagon receptor agonist in late-stage
+      trials. Phase 2 weight loss exceeded Tirzepatide in head-to-head data.
+    goal_categories: [fat_loss]
+    administration_routes: [subq]
+    time_to_effect_hours: 24
+    peak_effect_hours: 24
+    duration_hours: 168
+    dosing_formula: "clamp(2000 + weeksOnCycle * 1000, 2000, 12000)"
+    dosing_unit: mcg
+    dosing_frequency: weekly
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 28
+    recommended_site_ids: [abdomen-subq-left, abdomen-subq-right]
+
+  # ── Other / cognitive / sexual ──────────────────────────────────────────
+  - slug: pt-141
+    name: PT-141
+    half_life_hrs: 2
+    dosing_range_low_mcg: 1000
+    dosing_range_high_mcg: 2000
+    benefits: [Sexual desire, Erectile function, Libido (M+F)]
+    side_effects: [Nausea, Flushing, Headache, Increased BP]
+    stacking_notes: "Take 30 min – 2 hr before activity. Avoid in uncontrolled hypertension."
+    fda_status: approved
+    summary_md: |
+      PT-141 (Bremelanotide / Vyleesi) is a melanocortin agonist. FDA-approved
+      for HSDD in premenopausal women.
+    goal_categories: [libido]
+    administration_routes: [subq, nasal]
+    time_to_effect_hours: 0.5
+    peak_effect_hours: 1.5
+    duration_hours: 8
+    dosing_formula: "1750"
+    dosing_unit: mcg
+    dosing_frequency: as_needed
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids: [abdomen-subq-left, thigh-subq-left]
+
+  - slug: melanotan-ii
+    name: Melanotan II
+    half_life_hrs: 1
+    dosing_range_low_mcg: 250
+    dosing_range_high_mcg: 1000
+    benefits: [Skin tanning, Libido, Appetite suppression]
+    side_effects: [Nausea, Flushing, Mole darkening, BP changes]
+    stacking_notes: "Start very low (250mcg). Build slowly to assess tolerance."
+    fda_status: research
+    summary_md: |
+      Melanotan II is a non-selective melanocortin agonist. Stimulates melanin
+      production for tanning.
+    goal_categories: [skin_hair, libido]
+    administration_routes: [subq]
+    time_to_effect_hours: 1
+    peak_effect_hours: 2
+    duration_hours: 8
+    dosing_formula: "500"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids: [abdomen-subq-left, thigh-subq-left]
+
+  - slug: selank
+    name: Selank
+    half_life_hrs: 0.3
+    dosing_range_low_mcg: 250
+    dosing_range_high_mcg: 750
+    benefits: [Anxiolytic, Cognitive enhancement, Mood]
+    side_effects: [Generally mild, Mild drowsiness]
+    stacking_notes: "Often combined with Semax for synergistic nootropic effect."
+    fda_status: research
+    summary_md: |
+      Selank is a synthetic analogue of tuftsin researched for anxiety relief
+      without sedation or dependence.
+    goal_categories: [cognitive]
+    administration_routes: [subq, nasal]
+    time_to_effect_hours: 0.25
+    peak_effect_hours: 0.5
+    duration_hours: 6
+    dosing_formula: "500"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids: [abdomen-subq-left]
+
+  - slug: semax
+    name: Semax
+    half_life_hrs: 0.3
+    dosing_range_low_mcg: 250
+    dosing_range_high_mcg: 1000
+    benefits: [BDNF/NGF boost, Focus, Memory, Neuroprotection]
+    side_effects: [Generally mild, Slight stimulation]
+    stacking_notes: "Pairs with Selank for balanced focus + calm."
+    fda_status: research
+    summary_md: |
+      Semax is a Russian-developed ACTH analogue researched for stroke recovery,
+      focus, and BDNF expression.
+    goal_categories: [cognitive]
+    administration_routes: [subq, nasal]
+    time_to_effect_hours: 0.25
+    peak_effect_hours: 0.5
+    duration_hours: 6
+    dosing_formula: "750"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids: [abdomen-subq-left]
+
+  - slug: epithalon
+    name: Epithalon
+    half_life_hrs: 0.5
+    dosing_range_low_mcg: 5000
+    dosing_range_high_mcg: 10000
+    benefits: [Telomere lengthening, Sleep improvement, Melatonin regulation]
+    side_effects: [Generally mild, Vivid dreams]
+    stacking_notes: "Cycle 10 days on, 6 months off (Russian protocol)."
+    fda_status: research
+    summary_md: |
+      Epithalon is a tetrapeptide researched for telomere lengthening and
+      circadian regulation.
+    goal_categories: [longevity, sleep]
+    administration_routes: [subq]
+    time_to_effect_hours: 24
+    peak_effect_hours: 48
+    duration_hours: 240
+    dosing_formula: "10000"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids: [abdomen-subq-left]
+
+  - slug: dsip
+    name: DSIP
+    half_life_hrs: 0.3
+    dosing_range_low_mcg: 100
+    dosing_range_high_mcg: 300
+    benefits: [Sleep depth, Stress modulation]
+    side_effects: [Generally well tolerated, Mild headache]
+    stacking_notes: "Take 30 min before bed for sleep onset support."
+    fda_status: research
+    summary_md: |
+      DSIP (Delta Sleep-Inducing Peptide) is researched for sleep architecture
+      support and stress response modulation.
+    goal_categories: [sleep]
+    administration_routes: [subq]
+    time_to_effect_hours: 0.25
+    peak_effect_hours: 0.5
+    duration_hours: 6
+    dosing_formula: "200"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids: [abdomen-subq-left]
+
+  - slug: kpv
+    name: KPV
+    half_life_hrs: 1
+    dosing_range_low_mcg: 250
+    dosing_range_high_mcg: 500
+    benefits: [Anti-inflammatory, Gut healing, Skin]
+    side_effects: [Generally well tolerated]
+    stacking_notes: "Combine with BPC-157 for gut protocol."
+    fda_status: research
+    summary_md: |
+      KPV is a tripeptide fragment of α-MSH researched for anti-inflammatory and
+      immunomodulatory effects.
+    goal_categories: [immune, recovery, skin_hair]
+    administration_routes: [subq, oral]
+    time_to_effect_hours: 1
+    peak_effect_hours: 2
+    duration_hours: 8
+    dosing_formula: "500"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids: [abdomen-subq-left]
+
+  - slug: ll-37
+    name: LL-37
+    half_life_hrs: 0.5
+    dosing_range_low_mcg: 100
+    dosing_range_high_mcg: 1000
+    benefits: [Antimicrobial, Wound healing, Anti-biofilm]
+    side_effects: [Injection-site reaction, Mild flushing]
+    stacking_notes: "Researched for chronic Lyme/biofilm protocols."
+    fda_status: research
+    summary_md: |
+      LL-37 is a human cathelicidin antimicrobial peptide researched for chronic
+      infections and biofilm disruption.
+    goal_categories: [immune]
+    administration_routes: [subq]
+    time_to_effect_hours: 1
+    peak_effect_hours: 2
+    duration_hours: 6
+    dosing_formula: "500"
+    dosing_unit: mcg
+    dosing_frequency: daily
+    bac_water_ml_default: 2.0
+    storage_temp: refrigerated
+    storage_max_days: 30
+    recommended_site_ids: [abdomen-subq-left]

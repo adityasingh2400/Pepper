@@ -326,39 +326,48 @@ struct CompoundRow: View {
     let compound: LocalProtocolCompound
     let onLogDose: () -> Void
 
+    private var resolvedCompound: Compound? {
+        CompoundCatalog.compound(named: compound.compoundName)
+    }
+
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(compound.compoundName)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(Color.appTextPrimary)
-                HStack(spacing: 6) {
-                    Text("\(Int(compound.doseMcg)) mcg")
-                        .font(.system(size: 12))
-                        .foregroundColor(Color.appTextTertiary)
-                    Text("·")
-                        .foregroundColor(Color.appTextMeta)
-                    Text(frequencyLabel(compound.frequency))
-                        .font(.system(size: 12))
-                        .foregroundColor(Color.appTextTertiary)
-                    if !compound.doseTimes.isEmpty {
-                        Text("·")
-                            .foregroundColor(Color.appTextMeta)
-                        Text(compound.doseTimes.joined(separator: ", "))
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(compound.compoundName)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color.appTextPrimary)
+                    HStack(spacing: 6) {
+                        Text("\(Int(compound.doseMcg)) mcg")
                             .font(.system(size: 12))
                             .foregroundColor(Color.appTextTertiary)
+                        Text("·")
+                            .foregroundColor(Color.appTextMeta)
+                        Text(frequencyLabel(compound.frequency))
+                            .font(.system(size: 12))
+                            .foregroundColor(Color.appTextTertiary)
+                        if !compound.doseTimes.isEmpty {
+                            Text("·")
+                                .foregroundColor(Color.appTextMeta)
+                            Text(compound.doseTimes.joined(separator: ", "))
+                                .font(.system(size: 12))
+                                .foregroundColor(Color.appTextTertiary)
+                        }
                     }
                 }
+                Spacer()
+                Button(action: onLogDose) {
+                    Text("Log")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(Color.appAccent)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color.appAccentTint)
+                        .cornerRadius(8)
+                }
             }
-            Spacer()
-            Button(action: onLogDose) {
-                Text("Log")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundColor(Color.appAccent)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.appAccentTint)
-                    .cornerRadius(8)
+            if let r = resolvedCompound, r.timeline.hasAnyData {
+                PeptideTimelineView(timeline: r.timeline, mode: .compact)
             }
         }
         .padding(.horizontal, 16)

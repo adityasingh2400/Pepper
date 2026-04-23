@@ -1,0 +1,112 @@
+# Pepper — instructional video prompts for Google Vertex AI Veo
+#
+# Each entry produces one short (4–8 s) anatomical injection clip stored as
+# `videos/<slug>.mp4` in Supabase Storage and referenced from
+# `compounds.video_slug`.
+#
+# Style guidance baked into every prompt:
+# - Studio-medical animation, clean white background, soft grey shadow.
+# - Stylized human figure in light blue scrubs, no face shown.
+# - Camera locks on the body region for the technique. Slow zoom in, no cuts.
+# - Caption-friendly: leave bottom 20% empty so we can overlay step text.
+# - No needles puncturing skin on screen — show angle + pinch only, then a
+#   soft glow at the injection site indicates "dose delivered".
+#
+# Generated metadata (filled in by `scripts/generate_veo_videos.ts`):
+#   - duration_seconds (4–8)
+#   - storage_path (videos/<slug>.mp4)
+#   - generated_at (ISO timestamp)
+
+videos:
+  - id: subq-abdomen
+    title: "Subcutaneous injection — lower abdomen"
+    duration_seconds: 6
+    aspect_ratio: "9:16"
+    prompt: |
+      Studio medical animation. Close-up of a stylized male torso in light blue
+      surgical scrubs, viewed from the front. The figure pinches a 1-inch fold
+      of skin two finger-widths to the left of the navel. A faint dotted ring
+      indicates the injection target. The hand holds a thin blue-handled
+      insulin syringe at a 90-degree angle to the skin. The needle is hidden;
+      a brief gold sparkle indicates dose delivery. Camera holds steady, no
+      cuts. White background, soft drop shadow. Bottom 20% kept empty for
+      caption overlay. Slow, calm pacing.
+    sites: ["abdomen-subq-left", "abdomen-subq-right"]
+
+  - id: subq-thigh
+    title: "Subcutaneous injection — outer thigh"
+    duration_seconds: 6
+    aspect_ratio: "9:16"
+    prompt: |
+      Studio medical animation. A stylized seated figure in light blue scrubs
+      seen from the side. The hand pinches the outer middle third of the
+      thigh between knee and hip. A blue-handled insulin syringe is held at
+      90 degrees. The injection point glows briefly with a gentle gold
+      sparkle. White background, calm pacing, bottom 20% empty for caption
+      overlay.
+    sites: ["thigh-subq-left", "thigh-subq-right"]
+
+  - id: im-deltoid
+    title: "Intramuscular injection — deltoid"
+    duration_seconds: 7
+    aspect_ratio: "9:16"
+    prompt: |
+      Studio medical animation. Front view of a stylized figure's bare
+      shoulder in light blue scrubs. A finger marks three finger-widths
+      below the acromion. A 25G needle in a small barrel approaches at
+      90 degrees, no skin puncture shown. The plunger glides slowly inward
+      while a subtle counterclockwise spiral arrow indicates aspiration
+      check. A faint warm glow at the site indicates the dose has landed.
+      White background, no cuts.
+    sites: ["deltoid-im-left", "deltoid-im-right"]
+
+  - id: im-glute
+    title: "Intramuscular injection — upper outer glute"
+    duration_seconds: 8
+    aspect_ratio: "9:16"
+    prompt: |
+      Studio medical animation. Stylized figure seen from behind in light
+      blue scrubs. A grid divides one buttock into 4 quadrants. The
+      upper-outer quadrant glows softly to indicate the safe target. A
+      23G syringe with blue handle approaches at 90 degrees and slowly
+      depresses; needle is not shown puncturing. A small "no entry" symbol
+      flashes briefly over the lower-inner quadrant to warn off the sciatic
+      nerve. Calm pacing, white background.
+    sites: ["glute-im-left", "glute-im-right"]
+
+  - id: subq-tricep
+    title: "Subcutaneous injection — back of upper arm"
+    duration_seconds: 6
+    aspect_ratio: "9:16"
+    prompt: |
+      Studio medical animation. Back view of a stylized figure in light
+      blue scrubs. A second hand reaches across the body to pinch the
+      loose skin at the back of the upper arm between shoulder and elbow.
+      An insulin syringe with thin blue barrel angles in at 90 degrees.
+      Brief warm glow indicates dose delivery. White background, soft
+      drop shadow, bottom 20% empty for caption overlay.
+    sites: ["tricep-subq-left", "tricep-subq-right"]
+
+  - id: reconstitution
+    title: "Reconstituting a peptide vial"
+    duration_seconds: 8
+    aspect_ratio: "16:9"
+    prompt: |
+      Studio medical animation, top-down studio shot on white. A small
+      lyophilized peptide vial sits next to a 3 mL bacteriostatic water
+      vial. A gloved hand picks up a 1 mL syringe with a 25G drawing
+      needle, swabs both rubber stoppers, draws 2 mL of bacteriostatic
+      water, then slowly drips it down the inside wall of the peptide
+      vial. The peptide gently dissolves with a soft gold shimmer. The
+      vial is then gently swirled — never shaken — and labeled with the
+      date. Calm pacing, gentle ambient light.
+    sites: []
+
+# Notes
+# -----
+# * Prompts intentionally avoid showing real needle punctures so the videos
+#   stay distribution-safe (App Store, social shares).
+# * Each prompt enforces "bottom 20% empty" so the iOS player can overlay the
+#   numbered step captions without re-rendering.
+# * Aspect ratios match the player viewport (9:16 for body shots inside the
+#   compound detail card, 16:9 for the reconstitution explainer card).
