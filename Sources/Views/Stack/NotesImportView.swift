@@ -71,43 +71,74 @@ struct NotesImportView: View {
 
     private var explainer: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Paste your stack from Apple Notes, a text message — anywhere.")
+            Text("Open Notes, copy your stack, then come back and paste.")
                 .font(.system(size: 14))
                 .foregroundColor(Color.appTextSecondary)
-            Text("We extract the compound, dose, and frequency on-device. Nothing leaves your phone.")
+            Text("Apple doesn't let apps read your notes directly — but everything we parse stays on-device.")
                 .font(.system(size: 12))
                 .foregroundColor(Color.appTextTertiary)
         }
     }
 
+    /// Two-button shortcut row.
+    /// - Left:  jump straight into Apple Notes (the OS won't let us read the
+    ///          notes ourselves — there's no public API — so the next-best
+    ///          UX is a one-tap deep-link out so the user can copy and come
+    ///          back).
+    /// - Right: PasteButton (iOS 16+) — system-styled, no permission prompt,
+    ///          the user just taps "Paste" and the clipboard contents flow
+    ///          straight into the editor.
     private var pasteCard: some View {
-        Button {
-            if let pasted = UIPasteboard.general.string, !pasted.isEmpty {
-                text = pasted
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            }
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "doc.on.clipboard.fill")
-                    .font(.system(size: 16, weight: .semibold))
-                Text("Pull from clipboard")
-                    .font(.system(size: 14, weight: .bold))
-                Spacer()
-                Image(systemName: "arrow.right")
-                    .font(.system(size: 12, weight: .bold))
-            }
-            .foregroundColor(.white)
-            .padding(14)
-            .background(
-                LinearGradient(
-                    colors: [Color.appAccent, Color.appAccent.opacity(0.85)],
-                    startPoint: .leading, endPoint: .trailing
+        HStack(spacing: 10) {
+            // Open Notes app
+            Button {
+                openNotesApp()
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.up.right.square.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Open Notes")
+                        .font(.system(size: 14, weight: .bold))
+                }
+                .foregroundColor(Color(hex: "92400e"))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(hex: "fef3c7"))
                 )
-            )
-            .cornerRadius(14)
-            .shadow(color: Color.appAccent.opacity(0.3), radius: 10, y: 4)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(Color(hex: "f59e0b").opacity(0.4), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
+
+            // System paste button (iOS 16+) — handles all the permission UX
+            // for us and looks native.
+            PasteButton(payloadType: String.self) { strings in
+                guard let first = strings.first, !first.isEmpty else { return }
+                Task { @MainActor in
+                    text = first
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
+            }
+            .labelStyle(.titleAndIcon)
+            .buttonBorderShape(.roundedRectangle(radius: 14))
+            .tint(Color.appAccent)
+            .frame(maxWidth: .infinity)
+            .frame(height: 48)
         }
-        .buttonStyle(.plain)
+    }
+
+    /// Best-effort deep-link into Apple Notes. Falls back to a no-op if the
+    /// scheme isn't registered (rare — shipped on every iPhone since iOS 9).
+    private func openNotesApp() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        if let url = URL(string: "mobilenotes://"),
+           UIApplication.shared.canOpenURL(url) {
+            UIApplication.shared.open(url)
+        }
     }
 
     private var editorCard: some View {
