@@ -168,6 +168,7 @@
 		E292BDD27FAC49022F969563 /* SyringeMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyringeMath.swift; sourceTree = "<group>"; };
 		E316347F2770670754F356D8 /* TrackTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrackTabView.swift; sourceTree = "<group>"; };
 		F7ADA16AA8D67B19118727DC /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
+		"TEMP_EF974379-60B6-4449-9581-D73FBD07F96F" /* signing.local.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = signing.local.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -433,6 +434,14 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		"TEMP_F7A360D3-DE31-4B5F-9C7C-A24320D414A9" /* Pepper */ = {
+			isa = PBXGroup;
+			children = (
+				"TEMP_EF974379-60B6-4449-9581-D73FBD07F96F" /* signing.local.xcconfig */,
+			);
+			path = Pepper;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -488,9 +497,11 @@
 				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					06827AEF4B9151CF63476AB9 = {
+						DevelopmentTeam = "$(LOCAL_DEVELOPMENT_TEAM)";
 						ProvisioningStyle = Automatic;
 					};
 					7FCBD66D71F7E1C3FE33F38E = {
+						DevelopmentTeam = "$(LOCAL_DEVELOPMENT_TEAM)";
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -659,6 +670,7 @@
 		};
 		394DEFBB905690069F45F343 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = "TEMP_EF974379-60B6-4449-9581-D73FBD07F96F" /* signing.local.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -695,6 +707,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "$(LOCAL_DEVELOPMENT_TEAM)";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -717,7 +730,7 @@
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.peptideapp.app;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LOCAL_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -731,6 +744,7 @@
 		};
 		48E29FE693B4811505754824 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = "TEMP_EF974379-60B6-4449-9581-D73FBD07F96F" /* signing.local.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -767,6 +781,7 @@
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "$(LOCAL_DEVELOPMENT_TEAM)";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -782,7 +797,7 @@
 				MARKETING_VERSION = 1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				PRODUCT_BUNDLE_IDENTIFIER = com.peptideapp.app;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LOCAL_BUNDLE_ID)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;

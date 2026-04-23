@@ -19,6 +19,11 @@ DerivedData/
 # Secrets — copy APIKeys.swift.example to APIKeys.swift and fill in your key
 Sources/Supporting/APIKeys.swift
 
+# Local signing config — copy signing.local.xcconfig.example and put in
+# your own Apple Developer team ID (10-char string from `security
+# find-identity -v -p codesigning`)
+signing.local.xcconfig
+
 # Supabase
 supabase/.env
 

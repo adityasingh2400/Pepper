@@ -8,7 +8,9 @@ options:
 
 settings:
   base:
-    PRODUCT_BUNDLE_IDENTIFIER: com.peptideapp.app
+    # Bundle ID lives in signing.local.xcconfig so each developer can use
+    # their own (Personal Team profiles require globally-unique bundle IDs).
+    PRODUCT_BUNDLE_IDENTIFIER: "$(LOCAL_BUNDLE_ID)"
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "6.0"
@@ -17,12 +19,19 @@ settings:
     TARGETED_DEVICE_FAMILY: "1"
     UIRequiresFullScreen: YES
     INFOPLIST_FILE: Supporting/Info.plist
-    # Auto-managed code signing. With a free personal team this gives you a
-    # 7-day device-installable build out of the box. Open
-    # Peptide.xcodeproj in Xcode → "Peptide" target → Signing & Capabilities,
-    # tick "Automatically manage signing", then pick your personal team.
+    # Auto-managed code signing. The team ID lives in `signing.local.xcconfig`
+    # (gitignored), so each developer can use their own Personal Team without
+    # stepping on each other. If signing.local.xcconfig is missing, xcodebuild
+    # will yell at you to "select a development team" — copy
+    # signing.local.xcconfig.example to signing.local.xcconfig and put your
+    # 10-character team ID in it.
     CODE_SIGN_STYLE: Automatic
     CODE_SIGN_IDENTITY: "Apple Development"
+    DEVELOPMENT_TEAM: "$(LOCAL_DEVELOPMENT_TEAM)"
+
+configFiles:
+  Debug: signing.local.xcconfig
+  Release: signing.local.xcconfig
 
 targets:
   Peptide:
