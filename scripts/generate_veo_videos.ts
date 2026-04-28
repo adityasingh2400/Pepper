@@ -262,6 +262,9 @@ async function main() {
     .filter((r) => r.status === "generated")
     .reduce((acc, r) => acc + (r.cost_estimate_usd ?? 0), 0);
   console.log(`Estimated total cost (new generations only): ~$${totalCost.toFixed(2)}`);
+  if (records.some((r) => r.status === "failed")) {
+    process.exit(1);
+  }
 }
 
 // ─── Chained generation (text → image-to-video → concat) ─────────────────

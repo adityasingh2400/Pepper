@@ -24,35 +24,30 @@ videos:
     chain:
       - duration_seconds: 6
         prompt: |
-          Ultra-photorealistic cinematic 4K vertical smartphone footage, real skin
-          texture and natural indoor lighting, slow controlled camera moves,
-          shallow depth of field. Absolutely no text, no words, no letters, no
-          labels, no captions, no graphics, no logos, no watermarks, no UI.
-          Close-up on a real adult’s hands and lower torso: lower abdomen and hip
-          visible at the left side of the frame. On a plain neutral surface sits a
-          small glass peptide vial and a bacteriostatic sterile water vial with
-          grey rubber stoppers. The person tears open an alcohol prep swab packet,
-          unfolds the pad, and scrubs each rubber stopper in slow circular wipes.
-          Transition to the same lighting and framing: they open a fresh swab and
-          thoroughly cleanse a patch of skin on the lower left abdomen lateral to the
-          navel, then pinch a modest fold of subcutaneous fat there between thumb
-          and forefinger and hold that pinch steady without releasing as the shot
-          ends. Same clothing edge, same skin tone, continuous documentary medical
-          realism, calm deliberate pacing.
+          Photorealistic cinematic 4K vertical smartphone clip, natural window light,
+          calm household bathroom or bedroom bokeh. Absolutely no on-screen text,
+          logos, watermark, or captions.
+          Close-up of an adult’s neutral lower torso and hands at frame left. On a
+          white counter rest two plain small glass pharmacy vials with grey rubber tops
+          containing no readable labels. The person opens a sealed isopropyl swab, wipes each
+          rubber top in slow circles, discards the swab, tears a second fresh swab,
+          and scrubs a palm-sized patch on the lower left abdomen a few inches lateral
+          from the navel. They lift a soft pinch of that cleaned skin between thumb and
+          forefinger and keep the pinch perfectly still as the take ends. Stable
+          handheld framing, realistic skin texture, restrained documentary pacing—no
+          needle, no syringe, nothing sharp in frame.
       - duration_seconds: 6
         prompt: |
-          Ultra-photorealistic cinematic 4K vertical footage. Treat the provided
-          reference image as the exact first frame: same hands, same skin, same fold
-          pinch on the lower left abdomen, same lighting—zero wardrobe or background
-          change. Absolutely no text, no words, no letters, no labels, no captions,
-          no graphics, no logos, no watermarks.
-          The free hand retrieves a disposable insulin syringe with a slim needle at
-          a ninety-degree orientation to that pinched fold. Slow continuous motion:
-          the needle enters the lifted subcutaneous fat, plunger depressing over
-          several seconds so the dose is infused smoothly in place. Locked-off macro
-          camera, sober clinical realism, steady hands, shallow focus on the pinch.
-          Minute natural skin blush at the pinch only; clip ends quietly with the pinch
-          still held.
+          Locked continuation from supplied reference frame—preserve hands, torso crop,
+          lighting, abdominal pinch identity. No captions, typography, watermark, sticker,
+          neon label, HUD text, logos.
+          Maintain photoreal flesh while a restrained illustrative bioluminescent
+          teal-gold glow diffuses softly through the pinched fold, reading as sterile
+          fluid dispersion (clearly CGI overlay, documentary patient-education look). No
+          needle, syringe, metal cannula, or puncture depiction—only hands, skin, faint
+          specular sparkle. Camera either micro-dolly or holds—thumb relaxes plunger-less
+          static pose; optional lint-free gauze blot passes once out of focus. Gentle
+          daylight, subsurface scattering realism, cinematic macro, calm ending hold.
 
   - id: subq-thigh
     title: "Subcutaneous injection — outer thigh"
