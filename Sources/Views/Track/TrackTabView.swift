@@ -4,45 +4,13 @@ import SwiftData
 struct TrackTabView: View {
     @EnvironmentObject private var authManager: AuthManager
 
-    enum Segment: String, CaseIterable {
-        case workouts = "Workouts"
-        case routines = "Routines"
-        case sites    = "Sites"
-    }
-    @State private var segment: Segment = .workouts
-
     var body: some View {
         let userId = authManager.session?.user.id.uuidString ?? ""
         NavigationStack {
-            VStack(spacing: 0) {
-                HStack(spacing: 6) {
-                    ForEach(Segment.allCases, id: \.self) { seg in
-                        Button(action: { segment = seg }) {
-                            Text(seg.rawValue)
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(segment == seg ? Color.appAccent : Color.appTextMeta)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 8)
-                                .background(segment == seg ? Color.appAccentTint : Color.clear)
-                                .cornerRadius(10)
-                        }
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+            WorkoutDiaryView(userId: userId)
                 .background(Color.appBackground)
-
-                Divider().overlay(Color.appBorder)
-
-                switch segment {
-                case .workouts: WorkoutDiaryView(userId: userId)
-                case .routines: RoutinesView(userId: userId)
-                case .sites:    InjectionSiteView(userId: userId)
-                }
-            }
-            .background(Color.appBackground)
-            .navigationTitle("Track")
-            .navigationBarTitleDisplayMode(.large)
+                .navigationTitle("Track")
+                .navigationBarTitleDisplayMode(.large)
         }
     }
 }

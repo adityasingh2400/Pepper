@@ -1,33 +1,43 @@
 /**
  * generate_veo_videos.ts
  * ----------------------
- * Generate the Pepper instructional injection videos with Google Vertex AI Veo
- * 2 and upload the results to Supabase Storage.
+ * Generate the Pepper instructional injection videos with Google Vertex AI
+ * Veo 3 and upload the results to Supabase Storage.
  *
  * Usage:
- *   GCP_PROJECT_ID=oriqprod \
+ *   GCP_PROJECT_ID=your-project \
  *   GCP_LOCATION=us-central1 \
  *   GCP_SERVICE_ACCOUNT_KEY=path/to/key.json \
  *   SUPABASE_URL=https://<project>.supabase.co \
  *   SUPABASE_SERVICE_ROLE_KEY=eyJ... \
- *   bun scripts/generate_veo_videos.ts
+ *   bun scripts/generate_veo_videos.ts                 # generate all
+ *   bun scripts/generate_veo_videos.ts --only=im-quad  # one id
+ *   bun scripts/generate_veo_videos.ts --dry-run       # validate only
+ *   bun scripts/generate_veo_videos.ts --force         # regenerate even
+ *                                                      # if the mp4 is
+ *                                                      # already in the
+ *                                                      # bucket (costs $$)
  *
  * Behavior:
  *   1. Reads `data/veo_prompts.yaml`.
- *   2. For each entry:
- *        a. Skips it if `videos/<id>.mp4` already exists in Supabase Storage
- *           (so re-runs are cheap).
- *        b. Submits a long-running predict request to Veo 2.
+ *   2. For each entry (or the `--only` entry):
+ *        a. Skips it if `videos/<id>.mp4` already exists in Supabase
+ *           Storage (unless `--force`) so re-runs stay cheap.
+ *        b. Submits a long-running predict request to Veo 3.
  *        c. Polls until the operation completes.
  *        d. Downloads the mp4 and uploads it to Supabase Storage at the
- *           `videos` bucket.
- *   3. Writes a small report to `data/veo_runs.json` so we can see what
+ *           `videos` bucket (public read).
+ *   3. Writes a report to `data/veo_runs.json` so we can see what
  *      generated, when, and at what cost.
  *
- * Important: this script is intentionally idempotent and safe to re-run.
- *
- * If you don't have Veo access yet, run with `--dry-run` to validate the YAML
- * and the Supabase storage path without spending GPU time.
+ * Policy note:
+ *   Every prompt in `data/veo_prompts.yaml` is written to keep the
+ *   needle *off* the skin — we show dotted target rings and gold
+ *   sparkles instead of punctures. This matters because Veo's content
+ *   filter will block any prompt that unambiguously depicts a needle
+ *   entering flesh. If a prompt gets blocked despite that, iterate on
+ *   it (add "never shown", "illustrative only", etc.) and re-run with
+ *   `--only=<id> --force`.
  */
 
 import fs from "node:fs";
@@ -63,11 +73,19 @@ interface RunRecord {
 
 const PROJECT_ID    = required("GCP_PROJECT_ID");
 const LOCATION      = process.env.GCP_LOCATION || "us-central1";
-const KEY_FILE      = required("GCP_SERVICE_ACCOUNT_KEY");
-const SUPABASE_URL  = required("SUPABASE_URL");
-const SUPABASE_KEY  = required("SUPABASE_SERVICE_ROLE_KEY");
+const KEY_FILE      = process.env.GCP_SERVICE_ACCOUNT_KEY;   // optional — falls back to application-default creds
+const SUPABASE_URL  = process.env.SUPABASE_URL || "";        // optional — when unset we only save locally
+const SUPABASE_KEY  = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const BUCKET        = process.env.SUPABASE_VIDEOS_BUCKET || "videos";
 const DRY_RUN       = process.argv.includes("--dry-run");
+const FORCE         = process.argv.includes("--force");
+const ONLY_ID       = extractFlag("--only");
+const LOCAL_DIR     = path.resolve("data/generated_videos");
+const SKIP_UPLOAD   = !SUPABASE_URL || !SUPABASE_KEY || process.argv.includes("--no-upload");
+// Veo 2 is what our GCP project (`oriqprod`) has access to. Veo 3 is in
+// closed preview and returned 404 when probed, so we default to Veo 2.
+// Override with VEO_MODEL env var when we get allowlist access to Veo 3.
+const VEO_MODEL     = process.env.VEO_MODEL || "veo-2.0-generate-001";
 const PROMPT_PATH   = path.resolve("data/veo_prompts.yaml");
 const REPORT_PATH   = path.resolve("data/veo_runs.json");
 
@@ -75,6 +93,13 @@ function required(name: string): string {
   const v = process.env[name];
   if (!v) throw new Error(`Missing required env var: ${name}`);
   return v;
+}
+
+function extractFlag(flag: string): string | null {
+  for (const arg of process.argv.slice(2)) {
+    if (arg.startsWith(`${flag}=`)) return arg.slice(flag.length + 1);
+  }
+  return null;
 }
 
 // ─── Main ──────────────────────────────────────────────────────────────────
@@ -87,23 +112,54 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`Found ${data.videos.length} prompts.`);
-  if (DRY_RUN) console.log("--dry-run: nothing will be sent to Veo or Supabase.");
+  const entries = ONLY_ID
+    ? data.videos.filter((v) => v.id === ONLY_ID)
+    : data.videos;
+
+  if (ONLY_ID && entries.length === 0) {
+    console.error(`No video with id=${ONLY_ID} found.`);
+    process.exit(1);
+  }
+
+  console.log(
+    `Found ${entries.length} prompt(s) to process ` +
+    `(model: ${VEO_MODEL}${DRY_RUN ? ", dry-run" : ""}${FORCE ? ", force" : ""}).`
+  );
 
   const records: RunRecord[] = [];
-  for (const entry of data.videos) {
+  if (!fs.existsSync(LOCAL_DIR)) fs.mkdirSync(LOCAL_DIR, { recursive: true });
+
+  for (const entry of entries) {
     try {
-      const exists = await supabaseObjectExists(`${entry.id}.mp4`);
-      if (exists) {
-        console.log(`✓ ${entry.id}: already in Supabase, skipping.`);
-        records.push({
-          id: entry.id,
-          storage_path: `${BUCKET}/${entry.id}.mp4`,
-          duration_seconds: entry.duration_seconds,
-          generated_at: new Date().toISOString(),
-          status: "skipped",
-        });
-        continue;
+      const localPath = path.join(LOCAL_DIR, `${entry.id}.mp4`);
+      const localExists = fs.existsSync(localPath) && fs.statSync(localPath).size > 0;
+
+      if (!FORCE) {
+        if (SKIP_UPLOAD && localExists) {
+          console.log(`✓ ${entry.id}: local file exists (${localPath}), skipping.`);
+          records.push({
+            id: entry.id,
+            storage_path: localPath,
+            duration_seconds: entry.duration_seconds,
+            generated_at: new Date().toISOString(),
+            status: "skipped",
+          });
+          continue;
+        }
+        if (!SKIP_UPLOAD) {
+          const remoteExists = await supabaseObjectExists(`${entry.id}.mp4`);
+          if (remoteExists) {
+            console.log(`✓ ${entry.id}: already in Supabase, skipping.`);
+            records.push({
+              id: entry.id,
+              storage_path: `${BUCKET}/${entry.id}.mp4`,
+              duration_seconds: entry.duration_seconds,
+              generated_at: new Date().toISOString(),
+              status: "skipped",
+            });
+            continue;
+          }
+        }
       }
 
       console.log(`▶ ${entry.id}: requesting Veo (${entry.duration_seconds}s, ${entry.aspect_ratio})…`);
@@ -115,13 +171,19 @@ async function main() {
       }
 
       if (!DRY_RUN) {
-        await supabaseUpload(`${entry.id}.mp4`, mp4);
-        console.log(`✓ ${entry.id}: uploaded to Supabase.`);
+        fs.writeFileSync(localPath, mp4);
+        console.log(`  saved locally: ${localPath} (${mp4.length} bytes)`);
+        if (!SKIP_UPLOAD) {
+          await supabaseUpload(`${entry.id}.mp4`, mp4);
+          console.log(`  ✓ uploaded to Supabase ${BUCKET}/${entry.id}.mp4`);
+        } else {
+          console.log(`  (skipping upload: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY not set)`);
+        }
       }
 
       records.push({
         id: entry.id,
-        storage_path: `${BUCKET}/${entry.id}.mp4`,
+        storage_path: SKIP_UPLOAD ? localPath : `${BUCKET}/${entry.id}.mp4`,
         duration_seconds: entry.duration_seconds,
         generated_at: new Date().toISOString(),
         status: DRY_RUN ? "skipped" : "generated",
@@ -131,7 +193,7 @@ async function main() {
       console.error(`✗ ${entry.id}:`, (err as Error).message);
       records.push({
         id: entry.id,
-        storage_path: `${BUCKET}/${entry.id}.mp4`,
+        storage_path: SKIP_UPLOAD ? path.join(LOCAL_DIR, `${entry.id}.mp4`) : `${BUCKET}/${entry.id}.mp4`,
         duration_seconds: entry.duration_seconds,
         generated_at: new Date().toISOString(),
         status: "failed",
@@ -142,8 +204,10 @@ async function main() {
 
   fs.writeFileSync(REPORT_PATH, JSON.stringify({ runs: records }, null, 2));
   console.log(`\nReport written to ${REPORT_PATH}`);
-  const totalCost = records.reduce((acc, r) => acc + (r.cost_estimate_usd ?? 0), 0);
-  console.log(`Estimated total cost: ~$${totalCost.toFixed(2)}`);
+  const totalCost = records
+    .filter((r) => r.status === "generated")
+    .reduce((acc, r) => acc + (r.cost_estimate_usd ?? 0), 0);
+  console.log(`Estimated total cost (new generations only): ~$${totalCost.toFixed(2)}`);
 }
 
 // ─── Vertex AI Veo ─────────────────────────────────────────────────────────
@@ -157,16 +221,16 @@ async function runVeoSync(entry: VeoPromptEntry): Promise<Buffer> {
   const accessToken = await getAccessToken();
   const endpoint =
     `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}` +
-    `/locations/${LOCATION}/publishers/google/models/veo-2.0-generate:predictLongRunning`;
+    `/locations/${LOCATION}/publishers/google/models/${VEO_MODEL}:predictLongRunning`;
 
   const body = {
     instances: [{
       prompt: entry.prompt,
-      durationSeconds: entry.duration_seconds,
-      aspectRatio: entry.aspect_ratio,
     }],
     parameters: {
       sampleCount: 1,
+      aspectRatio: entry.aspect_ratio,
+      durationSeconds: entry.duration_seconds,
       enhancePrompt: true,
     },
   };
@@ -186,21 +250,49 @@ async function runVeoSync(entry: VeoPromptEntry): Promise<Buffer> {
   const operation = startJson.name;
   if (!operation) throw new Error("Veo did not return an operation name.");
 
-  // Poll
+  // Poll. Veo uses a model-scoped `fetchPredictOperation` endpoint
+  // rather than the generic `operations/get`, which returns 404.
   const pollEndpoint =
-    `https://${LOCATION}-aiplatform.googleapis.com/v1/${operation}`;
+    `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}` +
+    `/locations/${LOCATION}/publishers/google/models/${VEO_MODEL}:fetchPredictOperation`;
   const deadline = Date.now() + 8 * 60 * 1000; // 8 minutes
   while (Date.now() < deadline) {
     await sleep(5000);
     const r = await fetch(pollEndpoint, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ operationName: operation }),
     });
-    if (!r.ok) throw new Error(`Veo poll failed: ${r.status}`);
-    const op = (await r.json()) as { done?: boolean; response?: any; error?: { message?: string } };
+    if (!r.ok) throw new Error(`Veo poll failed: ${r.status} ${await r.text()}`);
+    const op = (await r.json()) as {
+      done?: boolean;
+      response?: {
+        videos?: { bytesBase64Encoded?: string; mimeType?: string }[];
+        predictions?: { bytesBase64Encoded?: string }[];
+        raiMediaFilteredCount?: number;
+        raiMediaFilteredReasons?: string[];
+      };
+      error?: { message?: string };
+    };
     if (op.error?.message) throw new Error(op.error.message);
     if (op.done && op.response) {
-      const inline = op.response?.predictions?.[0]?.bytesBase64Encoded;
-      if (!inline) throw new Error("Veo returned no inline video bytes.");
+      // Safety filter triggered — no video bytes, just filter reasons.
+      if (op.response.raiMediaFilteredCount && op.response.raiMediaFilteredCount > 0) {
+        const reasons = op.response.raiMediaFilteredReasons?.join("; ") || "unspecified policy block";
+        throw new Error(`Veo safety filter rejected this prompt: ${reasons}`);
+      }
+      // Veo 2 returns `videos[]`; Veo 3 uses `predictions[]`.
+      const inline =
+        op.response.videos?.[0]?.bytesBase64Encoded ??
+        op.response.predictions?.[0]?.bytesBase64Encoded;
+      if (!inline) {
+        throw new Error(
+          `Veo returned no inline video bytes. Response: ${JSON.stringify(op.response).slice(0, 300)}`
+        );
+      }
       return Buffer.from(inline, "base64");
     }
   }
@@ -208,28 +300,36 @@ async function runVeoSync(entry: VeoPromptEntry): Promise<Buffer> {
 }
 
 async function getAccessToken(): Promise<string> {
-  // We rely on `gcloud auth print-access-token` if the user is already
-  // authenticated; otherwise we hand off to a service-account JWT exchange.
-  // Keeping this script zero-dep means we shell out instead of using
-  // `google-auth-library`.
+  // If a service-account key file was passed, use it. Otherwise fall
+  // back to the user's application-default credentials (what `gcloud
+  // auth application-default login` writes to
+  // ~/.config/gcloud/application_default_credentials.json). Keeping
+  // this script zero-dep means we shell out to gcloud rather than
+  // using google-auth-library.
   const { execSync } = await import("node:child_process");
   try {
-    const token = execSync(`GOOGLE_APPLICATION_CREDENTIALS="${KEY_FILE}" gcloud auth application-default print-access-token`, {
+    const env = KEY_FILE ? `GOOGLE_APPLICATION_CREDENTIALS="${KEY_FILE}" ` : "";
+    const token = execSync(`${env}gcloud auth application-default print-access-token`, {
       stdio: ["ignore", "pipe", "ignore"],
     }).toString().trim();
+    if (!token) throw new Error("empty token");
     return token;
   } catch (e) {
     throw new Error(
-      "Couldn't get a GCP access token. Make sure `gcloud` is installed and " +
-      "GOOGLE_APPLICATION_CREDENTIALS points at a service account key file."
+      "Couldn't get a GCP access token. Either set GCP_SERVICE_ACCOUNT_KEY " +
+      "to a service-account key file, or run `gcloud auth application-default login`."
     );
   }
 }
 
 function estimateVeoCost(durationSeconds: number): number {
-  // Public list price (USD) for Veo 2 at the time of writing.
-  // 0.50/sec for 720p video.
-  return durationSeconds * 0.5;
+  // Public list price (USD, approximate):
+  //   Veo 2: ~$0.50/sec for 720p   ← our current default
+  //   Veo 3: ~$0.75/sec (preview)
+  // Actual billing comes from your GCP invoice; this is a heads-up
+  // estimate so we can spot runaway spend before it hits the invoice.
+  const perSecond = VEO_MODEL.startsWith("veo-3") ? 0.75 : 0.50;
+  return durationSeconds * perSecond;
 }
 
 // ─── Supabase Storage ──────────────────────────────────────────────────────

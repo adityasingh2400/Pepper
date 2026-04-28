@@ -22,14 +22,25 @@ struct VoiceImportView: View {
     @StateObject private var voice = VoiceRecognitionService()
 
     @State private var compoundDetections: [StackParser.Detection] = []
+    @State private var ambiguities: [StackParser.Ambiguity] = []
+    @State private var resolvedAmbiguities: [StackParser.Detection] = []
+    @State private var dismissedAmbiguityIds: Set<UUID> = []
     @State private var goalIDs: Set<String> = []
     @State private var showPreview = false
     @State private var ringPulse = false
 
     private enum Mode { case empty, inventory, plan }
 
+    private var visibleAmbiguities: [StackParser.Ambiguity] {
+        ambiguities.filter { !dismissedAmbiguityIds.contains($0.id) }
+    }
+
+    private var allDetections: [StackParser.Detection] {
+        compoundDetections + resolvedAmbiguities
+    }
+
     private var mode: Mode {
-        if !compoundDetections.isEmpty { return .inventory }
+        if !allDetections.isEmpty { return .inventory }
         if !goalIDs.isEmpty { return .plan }
         return .empty
     }
@@ -39,7 +50,7 @@ struct VoiceImportView: View {
     /// detected goals.
     private var detectionsForPreview: [StackParser.Detection] {
         switch mode {
-        case .inventory: return compoundDetections
+        case .inventory: return allDetections
         case .plan:      return StackRecommender.recommend(goals: goalIDs)
         case .empty:     return []
         }
@@ -65,8 +76,8 @@ struct VoiceImportView: View {
 
     /// Counts **vials / line items** — a blend is one row, not two peptides.
     private var inventoryCountLabel: String {
-        let n = compoundDetections.count
-        let blends = compoundDetections.filter(\.isBlend).count
+        let n = allDetections.count
+        let blends = allDetections.filter(\.isBlend).count
         if n == 1, blends == 1 { return "1 blend" }
         if blends > 0 {
             return "\(n) items (\(blends) blend\(blends == 1 ? "" : "s"))"
@@ -84,6 +95,10 @@ struct VoiceImportView: View {
 
                     if !voice.transcript.isEmpty {
                         transcriptCard
+                    }
+
+                    if !visibleAmbiguities.isEmpty {
+                        ambiguityCard
                     }
 
                     detectionsCard
@@ -111,7 +126,13 @@ struct VoiceImportView: View {
                 )
             }
             .onChange(of: voice.transcript) { _, t in
-                compoundDetections = StackParser.parse(t)
+                let result = StackParser.parseWithAmbiguities(t)
+                compoundDetections = result.detections
+                ambiguities = result.ambiguities
+                // Auto-remove any resolved ambiguity whose option shows up
+                // in the main detections (covers later-transcript clarifications).
+                let resolvedNames = Set(result.detections.map(\.compoundName))
+                resolvedAmbiguities.removeAll { resolvedNames.contains($0.compoundName) }
                 goalIDs = GoalDetector.detect(in: t)
             }
             .onAppear { ringPulse = true }
@@ -267,7 +288,7 @@ struct VoiceImportView: View {
                 subtitle: inventoryCountLabel,
                 tint: Color(hex: "c2410c")
             )
-            ForEach(compoundDetections) { d in
+            ForEach(allDetections) { d in
                 HStack(alignment: .top, spacing: 10) {
                     if d.isBlend {
                         Image(systemName: "cylinder.split.1x2.fill")
@@ -308,6 +329,87 @@ struct VoiceImportView: View {
         .background(Color.appCard)
         .cornerRadius(14)
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.appBorder, lineWidth: 1))
+    }
+
+    /// Yellow "needs your pick" card. One row per ambiguity class triggered
+    /// in the transcript. Tap a chip → the corresponding concrete detection
+    /// is added to `resolvedAmbiguities` and the chip row goes away.
+    ///
+    /// Designed to feel like a calm nudge, not a red alert: amber tint,
+    /// compound-specific chip labels, and a "skip" pill so users who don't
+    /// care about the distinction (or who misspoke) can move on.
+    private var ambiguityCard: some View {
+        let amber = Color(hex: "b45309")
+        let amberBg = Color(hex: "fffbeb")
+        return VStack(alignment: .leading, spacing: 14) {
+            cardHeader(
+                icon: "questionmark.circle.fill",
+                title: "NEEDS YOUR PICK",
+                subtitle: "\(visibleAmbiguities.count) item\(visibleAmbiguities.count == 1 ? "" : "s")",
+                tint: amber
+            )
+            ForEach(visibleAmbiguities) { amb in
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(amb.prompt)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(Color.appTextPrimary)
+                    FlowLayout(spacing: 6, lineSpacing: 6) {
+                        ForEach(amb.options, id: \.self) { option in
+                            Button {
+                                resolve(ambiguity: amb, option: option)
+                            } label: {
+                                Text(option)
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Capsule().fill(amber))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        Button {
+                            dismissedAmbiguityIds.insert(amb.id)
+                        } label: {
+                            Text("Skip")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(amber)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(
+                                    Capsule().stroke(amber.opacity(0.5), lineWidth: 1)
+                                )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(amberBg)
+        .cornerRadius(14)
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(amber.opacity(0.35), lineWidth: 1))
+    }
+
+    /// Turn a user's chip pick into a concrete detection. Inherits the
+    /// dose / frequency the parser already pulled from the same segment.
+    private func resolve(ambiguity: StackParser.Ambiguity, option: String) {
+        // If the picked option is a blend, preserve the blend membership
+        // so the downstream preview renders it as one vial.
+        let blendMembers = CompoundCatalog.blendMembers(fromDisplayName: option) ?? []
+        let det = StackParser.Detection(
+            compoundName: option,
+            blendMembers: blendMembers,
+            doseMcg: ambiguity.doseMcg,
+            frequency: ambiguity.frequency,
+            sourceSegment: ambiguity.sourceSegment,
+            confidence: ambiguity.doseMcg != nil ? 0.9 : 0.7
+        )
+        // Replace any previous resolution for the same ambiguity row.
+        resolvedAmbiguities.removeAll { $0.sourceSegment == ambiguity.sourceSegment && CompoundCatalog.primaryCanonicalName(forProtocolDisplay: $0.compoundName) != CompoundCatalog.primaryCanonicalName(forProtocolDisplay: option) }
+        if !resolvedAmbiguities.contains(where: { $0.compoundName == option }) {
+            resolvedAmbiguities.append(det)
+        }
+        dismissedAmbiguityIds.insert(ambiguity.id)
     }
 
     private var planDetectionsCard: some View {

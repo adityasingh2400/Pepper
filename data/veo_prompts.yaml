@@ -87,6 +87,52 @@ videos:
       drop shadow, bottom 20% empty for caption overlay.
     sites: ["tricep-subq-left", "tricep-subq-right"]
 
+  - id: subq-upperchest
+    title: "Subcutaneous injection — upper chest"
+    duration_seconds: 6
+    aspect_ratio: "9:16"
+    prompt: |
+      Studio medical animation. Front view of a stylized figure in light
+      blue scrubs, close-up on the upper chest just below the collarbone.
+      A fingertip taps the soft fleshy area about one hand-width lateral
+      to the sternum to mark the target. A thin-barrelled insulin syringe
+      approaches at 45 degrees. The needle is hidden — a dotted ring
+      indicates the entry point and a soft gold sparkle signals that the
+      dose has landed. Camera holds steady, no cuts. White background,
+      bottom 20% empty for caption overlay. Calm, deliberate pacing.
+    sites: ["pec-subq-left", "pec-subq-right"]
+
+  - id: subq-lat
+    title: "Subcutaneous injection — mid back / lat"
+    duration_seconds: 6
+    aspect_ratio: "9:16"
+    prompt: |
+      Studio medical animation. Back view of a stylized figure in light
+      blue scrubs, camera over the shoulder looking down at the mid back.
+      A hand reaches around and pinches a fold of soft tissue just below
+      the shoulder blade, over the latissimus. A thin insulin syringe
+      approaches at 90 degrees; the needle is never shown touching skin,
+      only a dotted ring marking the target. A brief gold sparkle
+      indicates dose delivery. White background, soft shadow, bottom 20%
+      empty for caption overlay.
+    sites: ["lat-subq-left", "lat-subq-right"]
+
+  - id: im-quad
+    title: "Intramuscular injection — vastus lateralis (quad)"
+    duration_seconds: 7
+    aspect_ratio: "9:16"
+    prompt: |
+      Studio medical animation. A stylized seated figure in light blue
+      scrubs, close-up on the outer-front of the thigh. The thigh is
+      divided lengthwise into thirds with subtle guide lines; the outer
+      middle third glows faintly to indicate the safe IM target for the
+      vastus lateralis. A small-barrelled syringe with a 25G needle
+      approaches at 90 degrees. The needle is not shown puncturing skin;
+      the plunger depresses slowly while a spiral arrow briefly indicates
+      the aspiration check. A warm glow marks dose delivery. Calm pacing,
+      white background, bottom 20% empty for caption overlay.
+    sites: ["thigh-im-left", "thigh-im-right"]
+
   - id: reconstitution
     title: "Reconstituting a peptide vial"
     duration_seconds: 8

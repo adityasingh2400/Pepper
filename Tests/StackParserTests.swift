@@ -217,4 +217,76 @@ final class StackParserTests: XCTestCase {
         let c = CompoundCatalog.compound(named: "CJC-1295 + Ipamorelin")
         XCTAssertEqual(c?.name, "CJC-1295")
     }
+
+    // MARK: - Ambiguity classes
+
+    func test_bare_cjc_is_ambiguous_and_not_auto_added() {
+        let result = StackParser.parseWithAmbiguities("I run CJC 200 mcg daily")
+        // No concrete detection for CJC-1295 — we refuse to silently pick.
+        XCTAssertFalse(result.detections.contains { $0.compoundName == "CJC-1295" })
+        // User gets a chip to resolve it.
+        XCTAssertEqual(result.ambiguities.count, 1)
+        XCTAssertEqual(result.ambiguities.first?.classId, "cjc")
+        XCTAssertEqual(result.ambiguities.first?.doseMcg, 200)
+        XCTAssertEqual(result.ambiguities.first?.frequency, "daily")
+    }
+
+    func test_cjc_with_dac_resolves_to_1295_no_ambiguity() {
+        let result = StackParser.parseWithAmbiguities("CJC with DAC 100 mcg weekly")
+        XCTAssertTrue(result.detections.contains { $0.compoundName == "CJC-1295" })
+        XCTAssertTrue(result.ambiguities.isEmpty)
+    }
+
+    func test_cjc_1295_directly_no_ambiguity() {
+        // Explicit "CJC-1295" has no ambiguity — the 1295 itself disambiguates.
+        let result = StackParser.parseWithAmbiguities("CJC-1295 100 mcg weekly")
+        XCTAssertTrue(result.detections.contains { $0.compoundName == "CJC-1295" })
+        XCTAssertTrue(result.ambiguities.isEmpty)
+    }
+
+    func test_cjc_plus_ipa_blend_no_ambiguity() {
+        // "cjc/ipa" path — blend disambiguator fires, blend merger collapses.
+        let result = StackParser.parseWithAmbiguities("cjc/ipamorelin 100 mcg daily")
+        XCTAssertTrue(result.detections.contains { $0.isBlend })
+        XCTAssertTrue(result.ambiguities.isEmpty)
+    }
+
+    func test_bare_ghrp_is_ambiguous() {
+        let result = StackParser.parseWithAmbiguities("I run GHRP 200 mcg daily")
+        // Nothing auto-added.
+        let resolvedNames = Set(result.detections.map(\.compoundName))
+        XCTAssertFalse(resolvedNames.contains("GHRP-2"))
+        XCTAssertFalse(resolvedNames.contains("GHRP-6"))
+        XCTAssertEqual(result.ambiguities.first?.classId, "ghrp")
+    }
+
+    func test_ghrp_2_specific_resolves() {
+        let result = StackParser.parseWithAmbiguities("GHRP-2 200 mcg daily")
+        XCTAssertTrue(result.detections.contains { $0.compoundName == "GHRP-2" })
+        XCTAssertTrue(result.ambiguities.isEmpty)
+    }
+
+    func test_ghrp_6_specific_resolves() {
+        let result = StackParser.parseWithAmbiguities("GHRP-6 200 mcg daily")
+        XCTAssertTrue(result.detections.contains { $0.compoundName == "GHRP-6" })
+        XCTAssertTrue(result.ambiguities.isEmpty)
+    }
+
+    func test_ambiguity_dropped_when_class_resolved_elsewhere() {
+        // First line is ambiguous CJC. Second line pins CJC-1295 explicitly.
+        // We should emit only one CJC detection and no chip.
+        let input = """
+        CJC 100 mcg weekly
+        CJC-1295 with DAC
+        """
+        let result = StackParser.parseWithAmbiguities(input)
+        XCTAssertTrue(result.detections.contains { $0.compoundName == "CJC-1295" })
+        XCTAssertTrue(result.ambiguities.isEmpty, "class is resolved in a later segment — no chip")
+    }
+
+    func test_parse_function_still_returns_only_concrete_detections() {
+        // The old API must keep behaving the same for existing callers.
+        let detections = StackParser.parse("CJC 200 mcg daily")
+        XCTAssertTrue(detections.isEmpty, "bare CJC must not silently add CJC-1295")
+    }
 }

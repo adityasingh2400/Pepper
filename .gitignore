@@ -29,3 +29,7 @@ supabase/.env
 
 # gstack internal
 .gstack/
+
+# Veo / local video pipeline outputs (regenerate with scripts/generate_veo_videos.ts)
+data/generated_videos/
+data/veo_runs.json

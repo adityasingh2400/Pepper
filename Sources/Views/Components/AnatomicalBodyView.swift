@@ -221,6 +221,7 @@ struct PinSiteSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    videoCard
                     headerCard
                     techniqueCard
                     if let advice = site.rotationAdvice {
@@ -258,6 +259,12 @@ struct PinSiteSheet: View {
                 }
             }
         }
+    }
+
+    /// Ambient looping guide video pulled from Supabase Storage based on
+    /// the site's `videoSlug`. See `InjectionVideoPlayerView`.
+    private var videoCard: some View {
+        InjectionVideoPlayerView(slug: site.videoSlug)
     }
 
     private var headerCard: some View {

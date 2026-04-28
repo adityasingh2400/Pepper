@@ -49,11 +49,53 @@ enum StackParser {
         var isBlend: Bool { blendMembers.count >= 2 }
     }
 
+    /// A mention we recognized as pointing at an **ambiguity class** (e.g.
+    /// "CJC" or "GHRP") but couldn't disambiguate from surrounding context.
+    /// We surface these to the UI as chips so the user picks the right
+    /// variant before we auto-add anything to their stack — the alternative
+    /// (silently picking one) is wrong often enough that it erodes trust.
+    struct Ambiguity: Identifiable, Hashable {
+        let id = UUID()
+        /// Machine id for the ambiguity class (e.g. `"cjc"`, `"ghrp"`).
+        let classId: String
+        /// Human label for the prompt (e.g. `"Which CJC did you mean?"`).
+        let prompt: String
+        /// Canonical names the user can choose from.
+        let options: [String]
+        /// Dose / frequency we already parsed from the same segment — we
+        /// apply these to whichever option the user picks.
+        let doseMcg: Double?
+        let frequency: String?
+        let sourceSegment: String
+    }
+
+    /// Combined output used by the voice / notes import UIs. `parse(_:)`
+    /// keeps the original `[Detection]` shape for backward compatibility;
+    /// callers that want ambiguity chips use `parseWithAmbiguities(_:)`.
+    struct ParseResult: Equatable {
+        let detections: [Detection]
+        let ambiguities: [Ambiguity]
+
+        static func == (lhs: ParseResult, rhs: ParseResult) -> Bool {
+            lhs.detections.map(\.compoundName) == rhs.detections.map(\.compoundName)
+                && lhs.ambiguities.map(\.classId) == rhs.ambiguities.map(\.classId)
+        }
+    }
+
     /// Parse an entire blob and return one detection per compound found,
     /// de-duplicated by name (the higher-confidence detection wins).
     static func parse(_ raw: String) -> [Detection] {
+        parseWithAmbiguities(raw).detections
+    }
+
+    /// Full parse — detections for the stuff we're sure about, plus a list
+    /// of ambiguity prompts for mentions we recognized but wouldn't commit
+    /// to without user input.
+    static func parseWithAmbiguities(_ raw: String) -> ParseResult {
         let segments = splitIntoSegments(raw)
         var byCompound: [String: Detection] = [:]
+        var ambiguities: [Ambiguity] = []
+        var ambiguityClassesSeen = Set<String>()
 
         for segment in segments {
             for det in detectionsIn(segment: segment) {
@@ -65,16 +107,73 @@ enum StackParser {
                     byCompound[det.compoundName] = det
                 }
             }
+
+            // Only surface an ambiguity when the segment didn't already
+            // produce a concrete detection for that class — this handles
+            // "CJC-1295 no DAC" cleanly (the alias "cjc no dac" resolves
+            // to CJC-1295 directly, so no prompt).
+            for amb in ambiguitiesIn(segment: segment) {
+                guard !ambiguityClassesSeen.contains(amb.classId) else { continue }
+                // If any resolution option for this class already matched
+                // in this segment (or any earlier one), the user doesn't
+                // need a prompt for it.
+                let resolvedInSegment = detectionsIn(segment: segment)
+                    .contains { amb.options.contains($0.compoundName) }
+                let resolvedElsewhere = byCompound.keys
+                    .contains { amb.options.contains($0) }
+                if resolvedInSegment || resolvedElsewhere { continue }
+
+                ambiguities.append(amb)
+                ambiguityClassesSeen.insert(amb.classId)
+            }
         }
 
         var merged = Array(byCompound.values)
         merged = mergeCJCIpamorelinBlend(detections: merged, fullText: raw)
 
+        // Full-text disambiguation pass. The segmenter aggressively splits
+        // on " with " / " and ", which can strand class disambiguators
+        // ("CJC with DAC" → ["CJC", "DAC 100 mcg weekly"]) onto the wrong
+        // segment. So as a second pass we look at the whole transcript for
+        // disambiguating phrases and either upgrade a pending ambiguity
+        // into a concrete detection or just drop it.
+        let loweredFull = raw.lowercased()
+        var remainingAmbiguities: [Ambiguity] = []
+        for amb in ambiguities {
+            if let klass = AmbiguityClass.all.first(where: { $0.id == amb.classId }),
+               let resolvedOption = klass.options.first(where: { klass.disambiguatorMatches(segment: loweredFull, for: $0) }) {
+                let blendMembers = CompoundCatalog.blendMembers(fromDisplayName: resolvedOption) ?? []
+                let det = Detection(
+                    compoundName: resolvedOption,
+                    blendMembers: blendMembers,
+                    doseMcg: amb.doseMcg,
+                    frequency: amb.frequency,
+                    sourceSegment: amb.sourceSegment,
+                    confidence: confidence(hasDose: amb.doseMcg != nil, hasFreq: amb.frequency != nil)
+                )
+                if byCompound[resolvedOption] == nil {
+                    byCompound[resolvedOption] = det
+                }
+            } else {
+                remainingAmbiguities.append(amb)
+            }
+        }
+        merged = Array(byCompound.values)
+        merged = mergeCJCIpamorelinBlend(detections: merged, fullText: raw)
+
+        // If blending happened, the blend row resolves the CJC class —
+        // drop any dangling CJC ambiguity chip.
+        let resolvedNames = Set(merged.flatMap { [$0.compoundName] + $0.blendMembers })
+        let filteredAmbiguities = remainingAmbiguities.filter { amb in
+            !amb.options.contains(where: { resolvedNames.contains($0) })
+        }
+
         // Stable sort: highest confidence first, then alphabetical.
-        return merged.sorted {
+        let sortedDetections = merged.sorted {
             if $0.confidence != $1.confidence { return $0.confidence > $1.confidence }
             return $0.compoundName < $1.compoundName
         }
+        return ParseResult(detections: sortedDetections, ambiguities: filteredAmbiguities)
     }
 
     // MARK: - Blend merging (same-vial formulations)
@@ -228,7 +327,15 @@ enum StackParser {
         let dose = extractDoseMcg(in: segment)
         let frequency = extractFrequency(in: segment)
 
-        return names.map { name in
+        // Filter out compounds that were picked up only because of an
+        // ambiguous-class trigger (e.g. bare "CJC" → CJC-1295 alias). The
+        // caller will get an `Ambiguity` via `ambiguitiesIn(segment:)`
+        // instead of a silently-wrong concrete detection.
+        let filtered = names.filter { name in
+            !isAmbiguousDefaultForSegment(compoundName: name, segment: segment, coMatches: names)
+        }
+
+        return filtered.map { name in
             let conf = confidence(hasDose: dose != nil, hasFreq: frequency != nil)
             return Detection(
                 compoundName: name,
@@ -239,6 +346,79 @@ enum StackParser {
                 confidence: conf
             )
         }
+    }
+
+    /// True when `compoundName` only got matched because of an ambiguity
+    /// class trigger in this segment — and nothing in the segment pins it
+    /// to the specific variant. Two escape hatches:
+    ///   1. The segment contains text that disambiguates *any* option in
+    ///      the class (e.g. "with DAC" → CJC-1295 is the right default;
+    ///      "blend"/"ipamorelin" → CJC+Ipa blend — we keep the default
+    ///      detection and let the blend merger reshape it downstream).
+    ///   2. Another class co-member was also matched in the segment. This
+    ///      covers blend cases where the disambiguator regexes don't fire
+    ///      but both peptides are named directly.
+    private static func isAmbiguousDefaultForSegment(
+        compoundName: String,
+        segment: String,
+        coMatches: [String]
+    ) -> Bool {
+        guard let klass = AmbiguityClass.classFor(defaultCompound: compoundName) else {
+            return false
+        }
+        let lower = segment.lowercased()
+
+        // Segment didn't trigger the class at all → the match came from a
+        // non-ambiguous alias (e.g. "CJC-1295 with DAC" directly), keep it.
+        guard klass.triggerRegex.firstMatch(
+            in: lower, options: [],
+            range: NSRange(location: 0, length: (lower as NSString).length)
+        ) != nil else { return false }
+
+        // Any class-specific disambiguator fired → not ambiguous anymore.
+        // This is the key path for "cjc/ipa" segments: the blend option's
+        // disambiguator matches "ipamorelin", which tells us the user
+        // wasn't vaguely saying "CJC" — so we keep CJC-1295 and the blend
+        // merger downstream collapses the pair into one row.
+        if klass.anyOptionDisambiguated(in: lower) { return false }
+
+        // Another class member present in this segment → resolve via
+        // downstream merge / plain co-mention.
+        if coMatches.contains(where: { klass.coMembers(for: compoundName).contains($0) }) {
+            return false
+        }
+
+        return true
+    }
+
+    // MARK: - Ambiguity detection
+
+    /// Surface an ambiguity prompt for each class triggered in this segment
+    /// that didn't get disambiguated by context.
+    static func ambiguitiesIn(segment: String) -> [Ambiguity] {
+        let lower = segment.lowercased()
+        let dose = extractDoseMcg(in: segment)
+        let frequency = extractFrequency(in: segment)
+
+        var out: [Ambiguity] = []
+        for klass in AmbiguityClass.all {
+            let nsRange = NSRange(location: 0, length: (lower as NSString).length)
+            guard klass.triggerRegex.firstMatch(in: lower, options: [], range: nsRange) != nil else {
+                continue
+            }
+            // Already disambiguated by a class-specific phrase? Skip.
+            if klass.anyOptionDisambiguated(in: lower) { continue }
+
+            out.append(Ambiguity(
+                classId: klass.id,
+                prompt: klass.prompt,
+                options: klass.options,
+                doseMcg: dose,
+                frequency: frequency,
+                sourceSegment: segment
+            ))
+        }
+        return out
     }
 
     private static func confidence(hasDose: Bool, hasFreq: Bool) -> Double {
@@ -349,6 +529,100 @@ extension StackParser.Detection {
             frequency: frequency ?? "daily",
             doseTimes: ["08:00"]
         )
+    }
+}
+
+// MARK: - Ambiguity classes
+//
+// Words that point at more than one compound we ship. "CJC" is the canonical
+// case: it could mean CJC-1295-with-DAC, the short-acting Mod-GRF (CJC
+// without DAC), or the CJC+Ipamorelin blend (one vial). "GHRP" is similar —
+// alone it could be GHRP-2 or GHRP-6.
+//
+// The parser uses these to *refuse to silently commit* an ambiguous mention.
+// When a trigger fires and no disambiguator is present, we emit an
+// `Ambiguity` instead of a `Detection`, and the UI turns it into a chip row
+// the user can resolve in one tap.
+struct AmbiguityClass {
+    let id: String
+    let prompt: String
+    let triggerPattern: String
+    /// All canonical compound names this class can resolve to. (Can include
+    /// blend-display names like `"CJC-1295 + Ipamorelin"` — the preview
+    /// layer already handles blends.)
+    let options: [String]
+    /// The compound the existing alias table defaults to when the trigger
+    /// fires. This is the one we need to suppress until disambiguated.
+    let defaultCompound: String
+    /// Regex patterns that, when present in the same segment, resolve the
+    /// ambiguity to a specific option. Keys are option names.
+    let disambiguators: [String: String]
+
+    /// Pre-compiled trigger regex. Case-insensitive; expects lowercased text.
+    var triggerRegex: NSRegularExpression {
+        // Force-try is fine — the patterns are static and we unit-test them.
+        try! NSRegularExpression(pattern: triggerPattern, options: [.caseInsensitive])
+    }
+
+    /// Options other than `option` — used by the parser to tell when a
+    /// co-match in the same segment lets the blend/merge path resolve
+    /// the ambiguity naturally.
+    func coMembers(for option: String) -> [String] {
+        options.filter { $0 != option }
+    }
+
+    /// True when the segment contains text that pins the mention to one
+    /// specific option.
+    func disambiguatorMatches(segment lowered: String, for option: String) -> Bool {
+        guard let pattern = disambiguators[option] else { return false }
+        let ns = lowered as NSString
+        let range = NSRange(location: 0, length: ns.length)
+        guard let rx = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+            return false
+        }
+        return rx.firstMatch(in: lowered, options: [], range: range) != nil
+    }
+
+    /// True if any option has a matched disambiguator in the segment.
+    func anyOptionDisambiguated(in lowered: String) -> Bool {
+        options.contains { disambiguatorMatches(segment: lowered, for: $0) }
+    }
+
+    static let all: [AmbiguityClass] = [
+        // "CJC" alone could mean the 7-day-half-life DAC-modified variant,
+        // the short-acting no-DAC/Mod-GRF variant, or the CJC+Ipa blend
+        // (one vial). Our default alias points at CJC-1295 — suppress it
+        // until the user picks, unless the segment tells us which one.
+        .init(
+            id: "cjc",
+            prompt: "Which CJC did you mean?",
+            triggerPattern: #"(?i)\bc\s*j\s*c\b|\bsee\s*j\s*c\b|\bmod[\s-]*grf\b"#,
+            options: [
+                "CJC-1295",
+                "CJC-1295 + Ipamorelin",
+            ],
+            defaultCompound: "CJC-1295",
+            disambiguators: [
+                "CJC-1295": #"(?i)with\s*dac|\+\s*dac|\bdac\s*version\b|cjc[\s-]*1295\b(?!.*no\s*dac)"#,
+                "CJC-1295 + Ipamorelin": #"(?i)blend|ipa(?:morelin)?|amarillo|merlin|combo|one\s*vial"#,
+            ]
+        ),
+        // "GHRP" alone is ambiguous between GHRP-2 and GHRP-6.
+        .init(
+            id: "ghrp",
+            prompt: "Which GHRP did you mean?",
+            triggerPattern: #"(?i)\bg\s*h\s*r\s*p\b(?![\s-]?(?:2|two|6|six)\b)"#,
+            options: ["GHRP-2", "GHRP-6"],
+            defaultCompound: "GHRP-2",
+            disambiguators: [
+                "GHRP-2": #"(?i)ghrp[\s-]*(?:2|two)\b"#,
+                "GHRP-6": #"(?i)ghrp[\s-]*(?:6|six)\b"#,
+            ]
+        ),
+    ]
+
+    static func classFor(defaultCompound: String) -> AmbiguityClass? {
+        all.first { $0.defaultCompound == defaultCompound }
     }
 }
 

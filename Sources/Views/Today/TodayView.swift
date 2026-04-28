@@ -1187,42 +1187,63 @@ struct QuickActionsStrip: View {
     private struct Action {
         let label: String
         let icon: String
-        let color: Color
-        let tint: Color
         let action: () -> Void
     }
 
+    // Deep-wine gradient + cream emblem, matching the Research family cards.
+    // Unifies the four quick actions into one visual family instead of four
+    // competing pastel tiles.
+    private var cardGradient: LinearGradient {
+        LinearGradient(
+            colors: [Color(hex: "5a1528"), Color(hex: "3d0d1a")],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+    private var emblemFill: Color { Color(hex: "f5ead9") }
+    private var emblemStroke: Color { Color(hex: "c9a67a").opacity(0.55) }
+    private var titleCream: Color { Color(hex: "f5ead9") }
+    private var rim: Color { Color(hex: "c9a67a").opacity(0.28) }
+
     var body: some View {
         let actions: [Action] = [
-            Action(label: "Food", icon: "fork.knife", color: Color(hex: "b45309"), tint: Color(hex: "fef3c7"), action: onFood),
-            Action(label: "Dose", icon: "drop.fill", color: Color.appAccent, tint: Color.appAccentTint, action: onDose),
-            Action(label: "Workout", icon: "dumbbell.fill", color: Color(hex: "1d4ed8"), tint: Color(hex: "eff6ff"), action: onWorkout),
-            Action(label: "Symptom", icon: "heart.text.square.fill", color: Color(hex: "059669"), tint: Color(hex: "d1fae5"), action: onSymptom),
+            Action(label: "Food",    icon: "fork.knife",              action: onFood),
+            Action(label: "Dose",    icon: "drop.fill",               action: onDose),
+            Action(label: "Workout", icon: "dumbbell.fill",           action: onWorkout),
+            Action(label: "Symptom", icon: "heart.text.square.fill",  action: onSymptom),
         ]
         HStack(spacing: 10) {
             ForEach(actions, id: \.label) { a in
                 Button(action: a.action) {
-                    VStack(spacing: 6) {
+                    VStack(spacing: 8) {
                         ZStack {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(a.tint)
-                                .frame(width: 48, height: 48)
+                            Circle()
+                                .fill(emblemFill)
+                                .frame(width: 40, height: 40)
+                            Circle()
+                                .stroke(emblemStroke, lineWidth: 1)
+                                .frame(width: 40, height: 40)
                             Image(systemName: a.icon)
-                                .font(.system(size: 18))
-                                .foregroundColor(a.color)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(Color(hex: "5a1528"))
                         }
                         Text(a.label)
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(Color.appTextSecondary)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(titleCream)
                     }
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(cardGradient)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(rim, lineWidth: 1)
+                    )
+                    .cornerRadius(16)
+                    .shadow(color: Color(hex: "3d0d1a").opacity(0.22), radius: 6, x: 0, y: 3)
                 }
+                .buttonStyle(.plain)
             }
         }
-        .padding(14)
-        .background(Color.appCard)
-        .cornerRadius(18)
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.appBorder, lineWidth: 1))
     }
 }
 
