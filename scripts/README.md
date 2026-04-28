@@ -9,6 +9,7 @@ One-shot scripts for populating the Pepper Supabase project.
 - [Bun](https://bun.sh) ≥ 1.1
 - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in your shell (NOT the anon key)
 - The matching SQL migration applied (`supabase db push` or via dashboard)
+- **ffmpeg** (for chained prompts such as `subq-abdomen`): `brew install ffmpeg`
 
 ## Scripts
 
@@ -29,9 +30,9 @@ them to `citations`.
 
 ### `generate_veo_videos.ts`
 
-Renders the instructional injection videos (defined in `data/veo_prompts.yaml`)
-using Vertex AI **Veo 3** and uploads them to Supabase Storage. Idempotent —
-re-runs skip videos that are already in the bucket.
+Renders videos from `data/veo_prompts.yaml` using Vertex AI **Veo 3** and uploads to Supabase
+Storage. Single-clip entries use text-to-video. **`chain:`** entries (e.g. `subq-abdomen`) run
+multiple segments: first clip is text-to-video; the **last frame** is extracted with **ffmpeg** and passed to the next clip as image conditioning; parts are stitched into one `<slug>.mp4`. Idempotent — re-runs skip objects already present unless `--force`.
 
 **One-time Supabase setup:** create a storage bucket named `videos` and mark
 it **public** (Supabase dashboard → Storage → New bucket → Public bucket
@@ -41,8 +42,8 @@ toggle on). The iOS app pulls videos from the public URL —
 
 **Default model:** `veo-3.0-generate-001` ([Veo 3 on Vertex](https://cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-0-generate)).
 
-**If Vertex errors (404/403/quota):** your project or region may not have Veo 3 yet — run with
-`VEO_MODEL=veo-2.0-generate-001` (same REST flow; slightly different pricing).
+**If Vertex errors (404/403/quota):** your project may not have Veo 3 yet — try
+`VEO_MODEL=veo-2.0-generate-001`. **Image-conditioned continuation requires Veo 3** — chained abdomen clips will not work on pure Veo 2 unless you refactor to two separate text clips (continuity suffers).
 
 Preview outputs locally: **`open data/generated_videos/<slug>.mp4`** (macOS) or any video player.
 
@@ -54,22 +55,18 @@ SUPABASE_URL=https://<project>.supabase.co \
 SUPABASE_SERVICE_ROLE_KEY=eyJ... \
 bun scripts/generate_veo_videos.ts --dry-run           # validate prompts only
 bun scripts/generate_veo_videos.ts                     # generate all missing
-bun scripts/generate_veo_videos.ts --only=subq-abdomen # regenerate one prompt
+bun scripts/generate_veo_videos.ts --only=subq-abdomen # regenerate one prompt (chain = 2 Veo jobs)
 bun scripts/generate_veo_videos.ts --only=im-quad --force  # force overwrite
 ```
 
 Produces a per-run cost report in `data/veo_runs.json`.
 
-**Cost budget** (Veo 3 @ $0.75/sec preview price):
-- 8 prompts × ~6s average ≈ $36 per full run
-- Partial re-runs via `--only=<id>` cost ~$4.50 per 6s clip
+**Cost budget** (approximate list pricing for Veo 3):
 
-**Content-policy troubleshooting:** Veo blocks anything that looks like a
-needle puncturing skin. The prompts already avoid this — they use dotted
-target rings and gold sparkles for dose delivery instead. If a prompt
-still gets blocked, edit `data/veo_prompts.yaml` to add more language
-like "the needle is never shown touching skin, illustrative medical
-diagram only" and re-run with `--only=<id> --force`.
+- Straight clips — proportional to clip length (~\$0.75/s).
+- **`subq-abdomen`** chain — two 6 s generations ≈ **12 s** billed.
+
+**Vertex safety:** realistic needle-on-skin shots may trip filters. If a segment fails, soften that segment’s wording in YAML or shorten the injection description. Stylized prompts (other sites) intentionally avoid stark puncture depiction.
 
 ### `seed_citations.ts` (TODO)
 

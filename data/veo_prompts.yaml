@@ -1,37 +1,58 @@
 # Pepper — instructional video prompts for Google Vertex AI Veo
 #
-# Each entry produces one short (4–8 s) anatomical injection clip stored as
-# `videos/<slug>.mp4` in Supabase Storage and referenced from
-# `compounds.video_slug`.
+# Each entry produces one clip stored as `videos/<slug>.mp4` in Supabase and
+# referenced from `PinSite.videoSlug`.
 #
-# Style guidance baked into every prompt:
-# - Studio-medical animation, clean white background, soft grey shadow.
-# - Stylized human figure in light blue scrubs, no face shown.
-# - Camera locks on the body region for the technique. Slow zoom in, no cuts.
-# - Caption-friendly: leave bottom 20% empty so we can overlay step text.
-# - No needles puncturing skin on screen — show angle + pinch only, then a
-#   soft glow at the injection site indicates "dose delivered".
+# Single-clip entries: `duration_seconds` + `prompt`.
 #
-# Generated metadata (filled in by `scripts/generate_veo_videos.ts`):
-#   - duration_seconds (must be one of Veo 3's 4 / 6 / 8 seconds; legacy Veo 2 allowed 5–8)
-#   - storage_path (videos/<slug>.mp4)
-#   - generated_at (ISO timestamp)
+# `chain:` (2+ segments): segment 1 = text-to-video; segment 2+ = image-to-video
+# using the *last frame* of the previous segment so the edit reads continuous.
+# Requires `ffmpeg` locally. Use Veo 3 (`veo-3.0-generate-001`) for image conditioning.
+#
+# Prompt style:
+# - Prefer photorealistic, documentary-style healthcare B-roll unless a clip
+#   is explicitly stylized.
+# - Say "no text, no words, no labels" where on-screen junk has been a problem.
+#
+# Per-segment duration must be one of Veo 3's 4 / 6 / 8 seconds.
 
 videos:
   - id: subq-abdomen
-    title: "Subcutaneous injection — lower abdomen"
-    duration_seconds: 6
+    title: "Subcutaneous injection — lower abdomen (prep + inject)"
     aspect_ratio: "9:16"
-    prompt: |
-      Studio medical animation. Close-up of a stylized male torso in light blue
-      surgical scrubs, viewed from the front. The figure pinches a 1-inch fold
-      of skin two finger-widths to the left of the navel. A faint dotted ring
-      indicates the injection target. The hand holds a thin blue-handled
-      insulin syringe at a 90-degree angle to the skin. The needle is hidden;
-      a brief gold sparkle indicates dose delivery. Camera holds steady, no
-      cuts. White background, soft drop shadow. Bottom 20% kept empty for
-      caption overlay. Slow, calm pacing.
     sites: ["abdomen-subq-left", "abdomen-subq-right"]
+    chain:
+      - duration_seconds: 6
+        prompt: |
+          Ultra-photorealistic cinematic 4K vertical smartphone footage, real skin
+          texture and natural indoor lighting, slow controlled camera moves,
+          shallow depth of field. Absolutely no text, no words, no letters, no
+          labels, no captions, no graphics, no logos, no watermarks, no UI.
+          Close-up on a real adult’s hands and lower torso: lower abdomen and hip
+          visible at the left side of the frame. On a plain neutral surface sits a
+          small glass peptide vial and a bacteriostatic sterile water vial with
+          grey rubber stoppers. The person tears open an alcohol prep swab packet,
+          unfolds the pad, and scrubs each rubber stopper in slow circular wipes.
+          Transition to the same lighting and framing: they open a fresh swab and
+          thoroughly cleanse a patch of skin on the lower left abdomen lateral to the
+          navel, then pinch a modest fold of subcutaneous fat there between thumb
+          and forefinger and hold that pinch steady without releasing as the shot
+          ends. Same clothing edge, same skin tone, continuous documentary medical
+          realism, calm deliberate pacing.
+      - duration_seconds: 6
+        prompt: |
+          Ultra-photorealistic cinematic 4K vertical footage. Treat the provided
+          reference image as the exact first frame: same hands, same skin, same fold
+          pinch on the lower left abdomen, same lighting—zero wardrobe or background
+          change. Absolutely no text, no words, no letters, no labels, no captions,
+          no graphics, no logos, no watermarks.
+          The free hand retrieves a disposable insulin syringe with a slim needle at
+          a ninety-degree orientation to that pinched fold. Slow continuous motion:
+          the needle enters the lifted subcutaneous fat, plunger depressing over
+          several seconds so the dose is infused smoothly in place. Locked-off macro
+          camera, sober clinical realism, steady hands, shallow focus on the pinch.
+          Minute natural skin blush at the pinch only; clip ends quietly with the pinch
+          still held.
 
   - id: subq-thigh
     title: "Subcutaneous injection — outer thigh"
@@ -150,9 +171,6 @@ videos:
 
 # Notes
 # -----
-# * Prompts intentionally avoid showing real needle punctures so the videos
-#   stay distribution-safe (App Store, social shares).
-# * Each prompt enforces "bottom 20% empty" so the iOS player can overlay the
-#   numbered step captions without re-rendering.
-# * Aspect ratios match the player viewport (9:16 for body shots inside the
-#   compound detail card, 16:9 for the reconstitution explainer card).
+# * Single-clip prompts may use stylized animation; `subq-abdomen` uses a
+#   two-part photoreal chain—Vertex safety may still block needles; iterate if needed.
+# * Aspect ratios match the player viewport (9:16 for body shots, 16:9 for reconstitution).
