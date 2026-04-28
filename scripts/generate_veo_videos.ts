@@ -2,7 +2,7 @@
  * generate_veo_videos.ts
  * ----------------------
  * Generate the Pepper instructional injection videos with Google Vertex AI
- * Veo 3 and upload the results to Supabase Storage.
+ * Veo (default: Veo 3 GA) and upload the results to Supabase Storage.
  *
  * Usage:
  *   GCP_PROJECT_ID=your-project \
@@ -23,7 +23,7 @@
  *   2. For each entry (or the `--only` entry):
  *        a. Skips it if `videos/<id>.mp4` already exists in Supabase
  *           Storage (unless `--force`) so re-runs stay cheap.
- *        b. Submits a long-running predict request to Veo 3.
+ *        b. Submits a long-running predict request (see VEO_MODEL).
  *        c. Polls until the operation completes.
  *        d. Downloads the mp4 and uploads it to Supabase Storage at the
  *           `videos` bucket (public read).
@@ -82,10 +82,9 @@ const FORCE         = process.argv.includes("--force");
 const ONLY_ID       = extractFlag("--only");
 const LOCAL_DIR     = path.resolve("data/generated_videos");
 const SKIP_UPLOAD   = !SUPABASE_URL || !SUPABASE_KEY || process.argv.includes("--no-upload");
-// Veo 2 is what our GCP project (`oriqprod`) has access to. Veo 3 is in
-// closed preview and returned 404 when probed, so we default to Veo 2.
-// Override with VEO_MODEL env var when we get allowlist access to Veo 3.
-const VEO_MODEL     = process.env.VEO_MODEL || "veo-2.0-generate-001";
+// Default: Veo 3 GA (`veo-3.0-generate-001`). If Vertex returns 404/403 or
+// you only have quota on Veo 2, run with VEO_MODEL=veo-2.0-generate-001 .
+const VEO_MODEL     = process.env.VEO_MODEL || "veo-3.0-generate-001";
 const PROMPT_PATH   = path.resolve("data/veo_prompts.yaml");
 const REPORT_PATH   = path.resolve("data/veo_runs.json");
 
@@ -131,6 +130,7 @@ async function main() {
 
   for (const entry of entries) {
     try {
+      const billedSeconds = compliantDuration(entry.duration_seconds);
       const localPath = path.join(LOCAL_DIR, `${entry.id}.mp4`);
       const localExists = fs.existsSync(localPath) && fs.statSync(localPath).size > 0;
 
@@ -162,7 +162,7 @@ async function main() {
         }
       }
 
-      console.log(`▶ ${entry.id}: requesting Veo (${entry.duration_seconds}s, ${entry.aspect_ratio})…`);
+      console.log(`▶ ${entry.id}: requesting Veo (${billedSeconds}s, ${entry.aspect_ratio})…`);
       let mp4: Buffer;
       if (DRY_RUN) {
         mp4 = Buffer.alloc(0);
@@ -184,10 +184,10 @@ async function main() {
       records.push({
         id: entry.id,
         storage_path: SKIP_UPLOAD ? localPath : `${BUCKET}/${entry.id}.mp4`,
-        duration_seconds: entry.duration_seconds,
+        duration_seconds: billedSeconds,
         generated_at: new Date().toISOString(),
         status: DRY_RUN ? "skipped" : "generated",
-        cost_estimate_usd: estimateVeoCost(entry.duration_seconds),
+        cost_estimate_usd: estimateVeoCost(billedSeconds),
       });
     } catch (err) {
       console.error(`✗ ${entry.id}:`, (err as Error).message);
@@ -213,15 +213,21 @@ async function main() {
 // ─── Vertex AI Veo ─────────────────────────────────────────────────────────
 
 /**
- * Synchronous Veo 2 client. We avoid pulling in `@google-cloud/aiplatform`
- * because we want this script to stay zero-dep for fast iteration; we hit
- * the REST endpoint directly with a service-account access token.
+ * Long-running predict + poll. Zero-dep REST (gcloud token) — no AI Platform SDK.
+ * Veo 2 returns completed bytes under `videos[]`; Veo 3 may use `videos[]` or `predictions[]`.
  */
 async function runVeoSync(entry: VeoPromptEntry): Promise<Buffer> {
   const accessToken = await getAccessToken();
   const endpoint =
     `https://${LOCATION}-aiplatform.googleapis.com/v1/projects/${PROJECT_ID}` +
     `/locations/${LOCATION}/publishers/google/models/${VEO_MODEL}:predictLongRunning`;
+
+  const durationSeconds = compliantDuration(entry.duration_seconds);
+  if (durationSeconds !== entry.duration_seconds) {
+    console.warn(
+      `⚠ ${entry.id}: duration ${entry.duration_seconds}s → ${durationSeconds}s (Veo 3 requires 4, 6, or 8)`
+    );
+  }
 
   const body = {
     instances: [{
@@ -230,7 +236,7 @@ async function runVeoSync(entry: VeoPromptEntry): Promise<Buffer> {
     parameters: {
       sampleCount: 1,
       aspectRatio: entry.aspect_ratio,
-      durationSeconds: entry.duration_seconds,
+      durationSeconds,
       enhancePrompt: true,
     },
   };
@@ -284,7 +290,7 @@ async function runVeoSync(entry: VeoPromptEntry): Promise<Buffer> {
         const reasons = op.response.raiMediaFilteredReasons?.join("; ") || "unspecified policy block";
         throw new Error(`Veo safety filter rejected this prompt: ${reasons}`);
       }
-      // Veo 2 returns `videos[]`; Veo 3 uses `predictions[]`.
+      // Veo 2: `videos[]`; some Veo 3 responses use `predictions[]`.
       const inline =
         op.response.videos?.[0]?.bytesBase64Encoded ??
         op.response.predictions?.[0]?.bytesBase64Encoded;
@@ -322,12 +328,18 @@ async function getAccessToken(): Promise<string> {
   }
 }
 
+/** Veo 3 only accepts 4, 6, or 8. Snap to nearest (YAML should already match). */
+function compliantDuration(requested: number): number {
+  if (!VEO_MODEL.startsWith("veo-3")) return requested;
+  const allowed = [4, 6, 8] as const;
+  if ((allowed as readonly number[]).includes(requested)) return requested;
+  return allowed.reduce((best, x) =>
+    Math.abs(x - requested) < Math.abs(best - requested) ? x : best
+  );
+}
+
 function estimateVeoCost(durationSeconds: number): number {
-  // Public list price (USD, approximate):
-  //   Veo 2: ~$0.50/sec for 720p   ← our current default
-  //   Veo 3: ~$0.75/sec (preview)
-  // Actual billing comes from your GCP invoice; this is a heads-up
-  // estimate so we can spot runaway spend before it hits the invoice.
+  // Public list price (USD, approximate — check current GCP pricing).
   const perSecond = VEO_MODEL.startsWith("veo-3") ? 0.75 : 0.50;
   return durationSeconds * perSecond;
 }

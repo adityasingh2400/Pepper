@@ -13,7 +13,7 @@
 #   soft glow at the injection site indicates "dose delivered".
 #
 # Generated metadata (filled in by `scripts/generate_veo_videos.ts`):
-#   - duration_seconds (4–8)
+#   - duration_seconds (must be one of Veo 3's 4 / 6 / 8 seconds; legacy Veo 2 allowed 5–8)
 #   - storage_path (videos/<slug>.mp4)
 #   - generated_at (ISO timestamp)
 
@@ -48,7 +48,7 @@ videos:
 
   - id: im-deltoid
     title: "Intramuscular injection — deltoid"
-    duration_seconds: 7
+    duration_seconds: 8
     aspect_ratio: "9:16"
     prompt: |
       Studio medical animation. Front view of a stylized figure's bare
@@ -119,7 +119,7 @@ videos:
 
   - id: im-quad
     title: "Intramuscular injection — vastus lateralis (quad)"
-    duration_seconds: 7
+    duration_seconds: 8
     aspect_ratio: "9:16"
     prompt: |
       Studio medical animation. A stylized seated figure in light blue

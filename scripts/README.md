@@ -39,10 +39,12 @@ toggle on). The iOS app pulls videos from the public URL —
 `https://<project>.supabase.co/storage/v1/object/public/videos/<slug>.mp4`
 — so the bucket *must* be public for playback to work without auth.
 
-**Veo 3 access:** Veo 3 is in preview and requires allowlisting on your GCP
-project. Check at https://console.cloud.google.com/vertex-ai/publishers/google/model-garden/veo-3-generate-preview
-If you don't have access yet, fall back to Veo 2 by setting
-`VEO_MODEL=veo-2.0-generate` in the env.
+**Default model:** `veo-3.0-generate-001` ([Veo 3 on Vertex](https://cloud.google.com/vertex-ai/generative-ai/docs/models/veo/3-0-generate)).
+
+**If Vertex errors (404/403/quota):** your project or region may not have Veo 3 yet — run with
+`VEO_MODEL=veo-2.0-generate-001` (same REST flow; slightly different pricing).
+
+Preview outputs locally: **`open data/generated_videos/<slug>.mp4`** (macOS) or any video player.
 
 ```bash
 GCP_PROJECT_ID=your-project \
