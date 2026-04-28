@@ -45,6 +45,12 @@ struct MainTabView: View {
             .onAppear {
                 pepperService.navigation = nav
                 pepperService.spotlight = spotlight
+                nav.spotlight = spotlight
+                // Voice nav is silent (no TTS confirmations) — the UI is
+                // the feedback channel. Skip prerecorded-audio prewarm;
+                // still prewarm the audio session so AskPepper's TTS (the
+                // separate chat surface) has a warm start when invoked.
+                PrerecordedAudioCache.shared.prewarmAudioSession()
             }
             .environmentObject(nav)
 
@@ -57,20 +63,20 @@ struct MainTabView: View {
                 VoiceNavigatorView()
                     .environmentObject(nav)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .ignoresSafeArea(.all)
                     .transition(.opacity)
                     .zIndex(2)
             } else {
-                // Primary bubble = voice. Secondary small chat button below for AskPepper text chat.
-                VStack(spacing: 10) {
-                    PepperBubbleButton(onTap: { nav.presentVoiceNavigator() })
-                    PepperChatButton(onTap: { nav.presentPepper() })
-                }
-                .padding(.trailing, 16)
-                .padding(.bottom, 96)
-                .environmentObject(nav)
-                .transition(.opacity)
-                .zIndex(1)
+                // Single floating voice button — the chat-bubble icon that
+                // used to sit below was bloat. AskPepper still opens when
+                // Pepper needs to surface a free-form answer (see
+                // `VoiceNavigatorView.handlePepperResponseIfNeeded`), just
+                // without a dedicated manual entry point.
+                PepperBubbleButton(onTap: { nav.presentVoiceNavigator() })
+                    .padding(.trailing, 16)
+                    .padding(.bottom, 110)
+                    .environmentObject(nav)
+                    .transition(.opacity)
+                    .zIndex(1)
             }
         }
         .animation(.easeInOut(duration: 0.2), value: nav.showVoiceNavigator)
@@ -102,30 +108,27 @@ struct MainTabView: View {
 private struct PepperBubbleButton: View {
     var onTap: () -> Void
 
-    @State private var pulsing = false
     @State private var pressed = false
+
+    // Idle state: light wine background. Activation swaps this view for
+    // VoiceNavigatorView's PepperFaceView which handles the transition into
+    // dark wine + eyes + amino-acid mouth.
+    private let lightWine = Color(hex: "9f1239")
 
     var body: some View {
         ZStack {
             Circle()
-                .fill(Color(hex: "9f1239").opacity(0.22))
+                .fill(lightWine)
                 .frame(width: 56, height: 56)
-                .scaleEffect(pulsing ? 1.65 : 1.0)
-                .opacity(pulsing ? 0 : 1)
-                .animation(
-                    .easeOut(duration: 2.0).repeatForever(autoreverses: false),
-                    value: pulsing
-                )
-
-            Circle()
-                .fill(Color(hex: "9f1239"))
-                .frame(width: 56, height: 56)
-                .shadow(color: Color(hex: "9f1239").opacity(0.45), radius: pressed ? 6 : 16, x: 0, y: pressed ? 2 : 6)
+                .shadow(color: lightWine.opacity(0.45), radius: pressed ? 6 : 16, x: 0, y: pressed ? 2 : 6)
                 .scaleEffect(pressed ? 0.91 : 1.0)
                 .animation(.spring(response: 0.25, dampingFraction: 0.55), value: pressed)
 
-            Image(systemName: "mic.fill")
-                .font(.system(size: 24, weight: .bold))
+            Image("PepperLogo")
+                .resizable()
+                .renderingMode(.template)
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 34, height: 34)
                 .foregroundColor(.white)
                 .scaleEffect(pressed ? 0.91 : 1.0)
                 .animation(.spring(response: 0.25, dampingFraction: 0.55), value: pressed)
@@ -138,39 +141,7 @@ private struct PepperBubbleButton: View {
                 onTap()
             }
         }
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { pulsing = true }
-        }
         .accessibilityLabel("Voice assistant")
         .accessibilityHint("Tap to talk. Tap again to stop.")
-    }
-}
-
-private struct PepperChatButton: View {
-    var onTap: () -> Void
-    @State private var pressed = false
-
-    var body: some View {
-        Button(action: {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.55)) { pressed = true }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.5)) { pressed = false }
-                onTap()
-            }
-        }) {
-            ZStack {
-                Circle()
-                    .fill(Color.appCard)
-                    .frame(width: 40, height: 40)
-                    .shadow(color: .black.opacity(0.18), radius: pressed ? 3 : 10, y: pressed ? 1 : 4)
-                    .overlay(Circle().stroke(Color.appBorder.opacity(0.8), lineWidth: 0.5))
-                Image(systemName: "bubble.left.and.bubble.right.fill")
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(Color(hex: "9f1239"))
-            }
-            .scaleEffect(pressed ? 0.9 : 1.0)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Chat with Pepper")
     }
 }

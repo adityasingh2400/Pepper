@@ -31,6 +31,30 @@ struct Compound: Codable, Identifiable, Hashable {
     let needleLengthDefault: String?
     let recommendedSiteIds: [String]
 
+    /// Community popularity rank (1 = most discussed/sold across Reddit,
+    /// Looksmax, vendor catalogs, X/Twitter). Used to sort Research family
+    /// drill-downs so the most relevant compounds surface first. Nil means
+    /// "unranked" — sorted to the bottom alphabetically.
+    let popularityRank: Int?
+
+    // MARK: - Research detail (4-node structure shown in CompoundDetailView)
+
+    /// Concise day-by-day / week-by-week of what the user will actually feel.
+    /// Example: "Day 1-3: baseline. Week 2: deeper sleep. Week 4: visible recomp."
+    let effectsTimeline: String?
+
+    /// Biological mechanism of action. Receptors / pathways / enzymes it
+    /// targets. Written for an educated lay reader, not a textbook.
+    let mechanism: String?
+
+    /// Plain-language risks — what can actually go wrong, not a PDR wall
+    /// of text. Bullet-style fragments separated by " · " or newlines.
+    let risks: String?
+
+    /// Practical risk mitigations — what to pair / monitor / avoid. The
+    /// GHK-Cu + zinc example is the model here: concrete, actionable.
+    let mitigations: String?
+
     enum FDAStatus: String, Codable, Hashable {
         case research, grey, approved
     }
@@ -58,6 +82,11 @@ struct Compound: Codable, Identifiable, Hashable {
         case needleGaugeDefault = "needle_gauge_default"
         case needleLengthDefault = "needle_length_default"
         case recommendedSiteIds = "recommended_site_ids"
+        case popularityRank     = "popularity_rank"
+        case effectsTimeline    = "effects_timeline"
+        case mechanism          = "mechanism"
+        case risks              = "risks"
+        case mitigations        = "mitigations"
     }
 
     init(
@@ -85,7 +114,12 @@ struct Compound: Codable, Identifiable, Hashable {
         storageMaxDays: Int? = 30,
         needleGaugeDefault: String? = "29G",
         needleLengthDefault: String? = "1/2 inch",
-        recommendedSiteIds: [String] = []
+        recommendedSiteIds: [String] = [],
+        popularityRank: Int? = nil,
+        effectsTimeline: String? = nil,
+        mechanism: String? = nil,
+        risks: String? = nil,
+        mitigations: String? = nil
     ) {
         self.id = id
         self.name = name
@@ -112,6 +146,11 @@ struct Compound: Codable, Identifiable, Hashable {
         self.needleGaugeDefault = needleGaugeDefault
         self.needleLengthDefault = needleLengthDefault
         self.recommendedSiteIds = recommendedSiteIds
+        self.popularityRank = popularityRank
+        self.effectsTimeline = effectsTimeline
+        self.mechanism = mechanism
+        self.risks = risks
+        self.mitigations = mitigations
     }
 
     init(from decoder: Decoder) throws {
@@ -141,6 +180,11 @@ struct Compound: Codable, Identifiable, Hashable {
         self.needleGaugeDefault   = try c.decodeIfPresent(String.self, forKey: .needleGaugeDefault) ?? "29G"
         self.needleLengthDefault  = try c.decodeIfPresent(String.self, forKey: .needleLengthDefault) ?? "1/2 inch"
         self.recommendedSiteIds   = (try? c.decode([String].self, forKey: .recommendedSiteIds)) ?? []
+        self.popularityRank       = try c.decodeIfPresent(Int.self, forKey: .popularityRank)
+        self.effectsTimeline      = try c.decodeIfPresent(String.self, forKey: .effectsTimeline)
+        self.mechanism            = try c.decodeIfPresent(String.self, forKey: .mechanism)
+        self.risks                = try c.decodeIfPresent(String.self, forKey: .risks)
+        self.mitigations          = try c.decodeIfPresent(String.self, forKey: .mitigations)
     }
 }
 

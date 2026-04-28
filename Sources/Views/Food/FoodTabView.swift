@@ -595,44 +595,68 @@ struct MealSectionCard: View {
     var mealCarbs:   Double { logs.reduce(0) { $0 + $1.carbsG } }
     var mealFat:     Double { logs.reduce(0) { $0 + $1.fatG } }
 
+    // Deep wine → near-black gradient, matching Research family cards.
+    // All four meals share one palette so the Food page reads as one
+    // cohesive stack instead of four mismatched pastel blocks.
+    private var headerGradient: LinearGradient {
+        LinearGradient(
+            colors: [Color(hex: "5a1528"), Color(hex: "3d0d1a")],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+    private var cream:       Color { Color(hex: "f5ead9") }
+    private var creamMuted:  Color { Color(hex: "e8d5bc") }
+    private var emblemStroke: Color { Color(hex: "c9a67a").opacity(0.55) }
+    private var rim:          Color { Color(hex: "c9a67a").opacity(0.28) }
+
     var body: some View {
         VStack(spacing: 0) {
-            // Header
+            // Header — dark maroon strip with cream emblem + text
             HStack(spacing: 12) {
-                Circle()
-                    .fill(Color(hex: meal.colorHex).opacity(0.15))
-                    .frame(width: 40, height: 40)
-                    .overlay(
-                        Image(systemName: meal.icon)
-                            .font(.system(size: 17))
-                            .foregroundColor(Color(hex: meal.colorHex))
-                    )
+                ZStack {
+                    Circle()
+                        .fill(cream)
+                        .frame(width: 44, height: 44)
+                    Circle()
+                        .stroke(emblemStroke, lineWidth: 1)
+                        .frame(width: 44, height: 44)
+                    Image(systemName: meal.icon)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(Color(hex: "5a1528"))
+                }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(meal.displayName)
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(Color.appTextPrimary)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(cream)
                     if mealKcal > 0 {
                         Text("\(mealKcal) kcal · \(String(format: "%.0f", mealProtein))P \(String(format: "%.0f", mealCarbs))C \(String(format: "%.0f", mealFat))F")
-                            .font(.system(size: 11))
-                            .foregroundColor(Color.appTextMeta)
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(creamMuted.opacity(0.85))
                     } else {
                         Text("Nothing logged")
                             .font(.system(size: 11))
-                            .foregroundColor(Color(hex: "c4b5a0"))
+                            .foregroundColor(creamMuted.opacity(0.65))
                     }
                 }
                 Spacer()
                 Button(action: onAdd) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 26))
-                        .foregroundColor(Color(hex: meal.colorHex))
+                    ZStack {
+                        Circle()
+                            .fill(cream)
+                            .frame(width: 32, height: 32)
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundColor(Color(hex: "5a1528"))
+                    }
                 }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 12)
+            .background(headerGradient)
 
             if !logs.isEmpty {
-                Divider().overlay(Color.appDivider)
                 ForEach(logs) { log in
                     MealItemRow(log: log)
                     if log.id != logs.last?.id {
@@ -644,7 +668,8 @@ struct MealSectionCard: View {
         }
         .background(Color.appCard)
         .cornerRadius(14)
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.appBorder, lineWidth: 1))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(rim, lineWidth: 1))
+        .shadow(color: Color(hex: "3d0d1a").opacity(0.18), radius: 8, x: 0, y: 3)
     }
 }
 

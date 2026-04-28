@@ -11,24 +11,19 @@ struct ProtocolTabView: View {
     @Query private var activeProtocols: [LocalProtocol]
     @Query private var doseLogs: [LocalDoseLog]
     @Query private var vials: [LocalVial]
-    @Query private var sideEffects: [LocalSideEffectLog]
 
     init(userId: String) {
         let uid = userId
         _activeProtocols = Query(filter: #Predicate<LocalProtocol> { $0.isActive == true && $0.userId == uid })
         _doseLogs = Query(filter: #Predicate<LocalDoseLog> { $0.userId == uid }, sort: \LocalDoseLog.dosedAt, order: .reverse)
         _vials = Query(filter: #Predicate<LocalVial> { $0.userId == uid })
-        _sideEffects = Query(filter: #Predicate<LocalSideEffectLog> { $0.userId == uid }, sort: \LocalSideEffectLog.loggedAt, order: .reverse)
     }
 
     @State private var showAddProtocol = false
     @State private var showStackImport = false
     @State private var showLogDose = false
     @State private var selectedCompound: LocalProtocolCompound?
-    @State private var showAddVial = false
-    @State private var showDoseHistory = false
-    @State private var showLogSideEffect = false
-    @State private var showSideEffectHistory = false
+    @State private var showInventory = false
 
     var body: some View {
         NavigationStack {
@@ -95,102 +90,37 @@ struct ProtocolTabView: View {
                     }
                     .buttonStyle(.plain)
 
-                    // Vials section
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text("VIALS")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(Color.appTextMeta)
-                                .kerning(1.2)
-                            Spacer()
-                            Button(action: { showAddVial = true }) {
-                                Image(systemName: "plus.circle.fill")
-                                    .foregroundColor(Color.appAccent)
-                                    .font(.system(size: 20))
-                            }
-                        }
-
-                        if vials.isEmpty {
-                            Text("No vials tracked yet. Add a vial to track inventory and use the reconstitution calculator.")
-                                .font(.system(size: 13))
-                                .foregroundColor(Color.appTextTertiary)
-                                .padding(14)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Color.appCard)
-                                .cornerRadius(12)
-                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.appBorder, lineWidth: 1))
-                        } else {
-                            ForEach(vials) { vial in
-                                VialCard(vial: vial)
-                            }
-                        }
-                    }
-
-                    // Side effects section
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text("SIDE EFFECTS")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(Color.appTextMeta)
-                                .kerning(1.2)
-                            Spacer()
-                            if !sideEffects.isEmpty {
-                                Button("See All") { showSideEffectHistory = true }
-                                    .font(.system(size: 12, weight: .semibold))
+                    // Inventory — peptides, needles, BAC water, vials, all in one place.
+                    Button(action: { showInventory = true }) {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.appAccentTint)
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: "tray.full.fill")
+                                    .font(.system(size: 17))
                                     .foregroundColor(Color.appAccent)
                             }
-                            Button(action: { showLogSideEffect = true }) {
-                                Image(systemName: "plus.circle.fill")
-                                    .foregroundColor(Color.appAccent)
-                                    .font(.system(size: 20))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Inventory")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .foregroundColor(Color.appTextPrimary)
+                                Text(inventorySubtitle)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(Color.appTextTertiary)
                             }
-                            .padding(.leading, 4)
-                        }
-
-                        if sideEffects.isEmpty {
-                            Text("No symptoms logged yet. Log anything you notice while on protocol — headaches, fatigue, water retention, etc.")
-                                .font(.system(size: 13))
-                                .foregroundColor(Color.appTextTertiary)
-                                .padding(14)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Color.appCard)
-                                .cornerRadius(12)
-                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.appBorder, lineWidth: 1))
-                        } else {
-                            ForEach(sideEffects.prefix(4)) { effect in
-                                SideEffectLogRow(effect: effect)
-                            }
-                        }
-                    }
-
-                    // Dose history preview
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            Text("RECENT DOSES")
-                                .font(.system(size: 11, weight: .bold))
-                                .foregroundColor(Color.appTextMeta)
-                                .kerning(1.2)
                             Spacer()
-                            Button("See All") { showDoseHistory = true }
+                            Image(systemName: "chevron.right")
                                 .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(Color.appAccent)
+                                .foregroundColor(Color.appTextMeta)
                         }
-
-                        if doseLogs.isEmpty {
-                            Text("No doses logged yet.")
-                                .font(.system(size: 13))
-                                .foregroundColor(Color.appTextTertiary)
-                                .padding(14)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Color.appCard)
-                                .cornerRadius(12)
-                                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.appBorder, lineWidth: 1))
-                        } else {
-                            ForEach(doseLogs.prefix(5)) { log in
-                                DoseLogRow(log: log)
-                            }
-                        }
+                        .padding(14)
+                        .background(Color.appCard)
+                        .cornerRadius(16)
+                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.appBorder, lineWidth: 1))
+                        .shadow(color: .black.opacity(0.04), radius: 4, y: 1)
                     }
+                    .buttonStyle(.plain)
 
                     // Bottom inset so the floating action stack
                     // (mic + Pepper bubble) never obscures real content.
@@ -224,21 +154,17 @@ struct ProtocolTabView: View {
                         .environmentObject(appState)
                 }
             }
-            .sheet(isPresented: $showAddVial) {
-                AddVialSheet()
+            .sheet(isPresented: $showInventory) {
+                InventoryModal(vials: vials)
                     .environmentObject(authManager)
-            }
-            .sheet(isPresented: $showDoseHistory) {
-                DoseHistorySheet(logs: doseLogs)
-            }
-            .sheet(isPresented: $showLogSideEffect) {
-                SideEffectSheet(linkedDose: nil)
-                    .environmentObject(authManager)
-            }
-            .sheet(isPresented: $showSideEffectHistory) {
-                SideEffectHistorySheet(effects: sideEffects)
             }
         }
+    }
+
+    private var inventorySubtitle: String {
+        let count = vials.count
+        if count == 0 { return "Peptides, needles, BAC water — all in one place" }
+        return "\(count) item\(count == 1 ? "" : "s") tracked"
     }
 
     /// One single, hero CTA for the very first run. No card-around-a-button —
@@ -1231,3 +1157,234 @@ struct DoseHistorySheet: View {
 
 // (ResearchInlineView removed — Research now lives only in its own bottom-tab,
 //  the in-Stack sub-segment was redundant and confusing.)
+
+// MARK: - Inventory Modal
+//
+// Single cream-toned surface that holds everything the user might stockpile:
+// peptide vials, needles/syringes, BAC water. Peptides are real today (backed
+// by LocalVial); needles and BAC water are placeholder slots we'll wire to
+// models once we've thought about the right way to represent them. The point
+// of this screen today is to get the disparate "Vials / Side Effects / Recent
+// Doses" scroll off the Stack page and into one calm, obvious drawer.
+
+struct InventoryModal: View {
+    let vials: [LocalVial]
+
+    @EnvironmentObject private var authManager: AuthManager
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var showAddVial = false
+
+    private enum Category: String, CaseIterable, Identifiable {
+        case peptides = "Peptides"
+        case needles  = "Needles & Syringes"
+        case bacWater = "BAC Water"
+        var id: String { rawValue }
+
+        var icon: String {
+            switch self {
+            case .peptides: return "drop.fill"
+            case .needles:  return "syringe.fill"
+            case .bacWater: return "testtube.2"
+            }
+        }
+    }
+
+    @State private var selected: Category = .peptides
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                // Warm cream wash — slightly richer than appBackground so the
+                // modal feels distinct when it slides up over the Stack page.
+                LinearGradient(
+                    colors: [Color(hex: "fbf3e9"), Color(hex: "f6ead9")],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 18) {
+                        header
+
+                        categoryPicker
+
+                        Group {
+                            switch selected {
+                            case .peptides: peptidesSection
+                            case .needles:  placeholderSection(
+                                title: "Needles & Syringes",
+                                body: "Track insulin syringes, pin sizes, and running count. Coming soon.",
+                                icon: "syringe.fill"
+                            )
+                            case .bacWater: placeholderSection(
+                                title: "BAC Water",
+                                body: "Track bacteriostatic water vials and expirations. Coming soon.",
+                                icon: "testtube.2"
+                            )
+                            }
+                        }
+                        .animation(.easeInOut(duration: 0.18), value: selected)
+
+                        Color.clear.frame(height: 24)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                }
+            }
+            .navigationTitle("Inventory")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") { dismiss() }
+                        .fontWeight(.semibold)
+                        .foregroundColor(Color.appAccent)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if selected == .peptides {
+                        Button(action: { showAddVial = true }) {
+                            Image(systemName: "plus")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(Color.appAccent)
+                        }
+                    }
+                }
+            }
+            .sheet(isPresented: $showAddVial) {
+                AddVialSheet()
+                    .environmentObject(authManager)
+            }
+        }
+    }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Your supplies")
+                .font(.system(size: 22, weight: .black))
+                .foregroundColor(Color.appTextPrimary)
+            Text("Everything you've got on hand — peptides, needles, and BAC water — in one spot.")
+                .font(.system(size: 13))
+                .foregroundColor(Color.appTextTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var categoryPicker: some View {
+        HStack(spacing: 6) {
+            ForEach(Category.allCases) { cat in
+                Button(action: { selected = cat }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: cat.icon)
+                            .font(.system(size: 11, weight: .bold))
+                        Text(cat.rawValue)
+                            .font(.system(size: 12, weight: .semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    }
+                    .foregroundColor(selected == cat ? .white : Color.appTextSecondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                    .background(
+                        selected == cat
+                            ? AnyShapeStyle(Color.appAccent)
+                            : AnyShapeStyle(Color.white.opacity(0.7))
+                    )
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(selected == cat ? Color.clear : Color(hex: "e8ddd0"), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var peptidesSection: some View {
+        if vials.isEmpty {
+            emptyCard(
+                icon: "drop.fill",
+                title: "No peptides yet",
+                body: "Add a vial to track concentration and remaining units.",
+                ctaTitle: "Add Peptide Vial"
+            ) {
+                showAddVial = true
+            }
+        } else {
+            VStack(spacing: 12) {
+                ForEach(vials) { vial in
+                    VialCard(vial: vial)
+                }
+            }
+        }
+    }
+
+    private func placeholderSection(title: String, body: String, icon: String) -> some View {
+        emptyCard(
+            icon: icon,
+            title: "\(title) — coming soon",
+            body: body,
+            ctaTitle: nil,
+            action: nil
+        )
+    }
+
+    private func emptyCard(
+        icon: String,
+        title: String,
+        body: String,
+        ctaTitle: String?,
+        action: (() -> Void)?
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(Color.appAccentTint)
+                        .frame(width: 42, height: 42)
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(Color.appAccent)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(Color.appTextPrimary)
+                    Text(body)
+                        .font(.system(size: 12))
+                        .foregroundColor(Color.appTextTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer()
+            }
+
+            if let ctaTitle, let action {
+                Button(action: action) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 14))
+                        Text(ctaTitle)
+                            .font(.system(size: 13, weight: .bold))
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(Color.appAccent)
+                    .cornerRadius(12)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(16)
+        .background(Color.white.opacity(0.85))
+        .cornerRadius(18)
+        .overlay(
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Color(hex: "e8ddd0"), lineWidth: 1)
+        )
+        .shadow(color: Color(hex: "3a2a1a").opacity(0.05), radius: 8, y: 2)
+    }
+}

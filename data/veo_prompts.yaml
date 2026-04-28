@@ -1,37 +1,53 @@
 # Pepper — instructional video prompts for Google Vertex AI Veo
 #
-# Each entry produces one short (4–8 s) anatomical injection clip stored as
-# `videos/<slug>.mp4` in Supabase Storage and referenced from
-# `compounds.video_slug`.
+# Each entry produces one clip stored as `videos/<slug>.mp4` in Supabase and
+# referenced from `PinSite.videoSlug`.
 #
-# Style guidance baked into every prompt:
-# - Studio-medical animation, clean white background, soft grey shadow.
-# - Stylized human figure in light blue scrubs, no face shown.
-# - Camera locks on the body region for the technique. Slow zoom in, no cuts.
-# - Caption-friendly: leave bottom 20% empty so we can overlay step text.
-# - No needles puncturing skin on screen — show angle + pinch only, then a
-#   soft glow at the injection site indicates "dose delivered".
+# Single-clip entries: `duration_seconds` + `prompt`.
 #
-# Generated metadata (filled in by `scripts/generate_veo_videos.ts`):
-#   - duration_seconds (4–8)
-#   - storage_path (videos/<slug>.mp4)
-#   - generated_at (ISO timestamp)
+# `chain:` (2+ segments): segment 1 = text-to-video; segment 2+ = image-to-video
+# using the *last frame* of the previous segment so the edit reads continuous.
+# Requires `ffmpeg` locally. Use Veo 3 (`veo-3.0-generate-001`) for image conditioning.
+#
+# Prompt style:
+# - Prefer photorealistic, documentary-style healthcare B-roll unless a clip
+#   is explicitly stylized.
+# - Say "no text, no words, no labels" where on-screen junk has been a problem.
+#
+# Per-segment duration must be one of Veo 3's 4 / 6 / 8 seconds.
 
 videos:
   - id: subq-abdomen
-    title: "Subcutaneous injection — lower abdomen"
-    duration_seconds: 6
+    title: "Subcutaneous injection — lower abdomen (prep + inject)"
     aspect_ratio: "9:16"
-    prompt: |
-      Studio medical animation. Close-up of a stylized male torso in light blue
-      surgical scrubs, viewed from the front. The figure pinches a 1-inch fold
-      of skin two finger-widths to the left of the navel. A faint dotted ring
-      indicates the injection target. The hand holds a thin blue-handled
-      insulin syringe at a 90-degree angle to the skin. The needle is hidden;
-      a brief gold sparkle indicates dose delivery. Camera holds steady, no
-      cuts. White background, soft drop shadow. Bottom 20% kept empty for
-      caption overlay. Slow, calm pacing.
     sites: ["abdomen-subq-left", "abdomen-subq-right"]
+    chain:
+      - duration_seconds: 6
+        prompt: |
+          Photorealistic cinematic 4K vertical smartphone clip, natural window light,
+          calm household bathroom or bedroom bokeh. Absolutely no on-screen text,
+          logos, watermark, or captions.
+          Close-up of an adult’s neutral lower torso and hands at frame left. On a
+          white counter rest two plain small glass pharmacy vials with grey rubber tops
+          containing no readable labels. The person opens a sealed isopropyl swab, wipes each
+          rubber top in slow circles, discards the swab, tears a second fresh swab,
+          and scrubs a palm-sized patch on the lower left abdomen a few inches lateral
+          from the navel. They lift a soft pinch of that cleaned skin between thumb and
+          forefinger and keep the pinch perfectly still as the take ends. Stable
+          handheld framing, realistic skin texture, restrained documentary pacing—no
+          needle, no syringe, nothing sharp in frame.
+      - duration_seconds: 6
+        prompt: |
+          Locked continuation from supplied reference frame—preserve hands, torso crop,
+          lighting, abdominal pinch identity. No captions, typography, watermark, sticker,
+          neon label, HUD text, logos.
+          Maintain photoreal flesh while a restrained illustrative bioluminescent
+          teal-gold glow diffuses softly through the pinched fold, reading as sterile
+          fluid dispersion (clearly CGI overlay, documentary patient-education look). No
+          needle, syringe, metal cannula, or puncture depiction—only hands, skin, faint
+          specular sparkle. Camera either micro-dolly or holds—thumb relaxes plunger-less
+          static pose; optional lint-free gauze blot passes once out of focus. Gentle
+          daylight, subsurface scattering realism, cinematic macro, calm ending hold.
 
   - id: subq-thigh
     title: "Subcutaneous injection — outer thigh"
@@ -48,7 +64,7 @@ videos:
 
   - id: im-deltoid
     title: "Intramuscular injection — deltoid"
-    duration_seconds: 7
+    duration_seconds: 8
     aspect_ratio: "9:16"
     prompt: |
       Studio medical animation. Front view of a stylized figure's bare
@@ -87,6 +103,52 @@ videos:
       drop shadow, bottom 20% empty for caption overlay.
     sites: ["tricep-subq-left", "tricep-subq-right"]
 
+  - id: subq-upperchest
+    title: "Subcutaneous injection — upper chest"
+    duration_seconds: 6
+    aspect_ratio: "9:16"
+    prompt: |
+      Studio medical animation. Front view of a stylized figure in light
+      blue scrubs, close-up on the upper chest just below the collarbone.
+      A fingertip taps the soft fleshy area about one hand-width lateral
+      to the sternum to mark the target. A thin-barrelled insulin syringe
+      approaches at 45 degrees. The needle is hidden — a dotted ring
+      indicates the entry point and a soft gold sparkle signals that the
+      dose has landed. Camera holds steady, no cuts. White background,
+      bottom 20% empty for caption overlay. Calm, deliberate pacing.
+    sites: ["pec-subq-left", "pec-subq-right"]
+
+  - id: subq-lat
+    title: "Subcutaneous injection — mid back / lat"
+    duration_seconds: 6
+    aspect_ratio: "9:16"
+    prompt: |
+      Studio medical animation. Back view of a stylized figure in light
+      blue scrubs, camera over the shoulder looking down at the mid back.
+      A hand reaches around and pinches a fold of soft tissue just below
+      the shoulder blade, over the latissimus. A thin insulin syringe
+      approaches at 90 degrees; the needle is never shown touching skin,
+      only a dotted ring marking the target. A brief gold sparkle
+      indicates dose delivery. White background, soft shadow, bottom 20%
+      empty for caption overlay.
+    sites: ["lat-subq-left", "lat-subq-right"]
+
+  - id: im-quad
+    title: "Intramuscular injection — vastus lateralis (quad)"
+    duration_seconds: 8
+    aspect_ratio: "9:16"
+    prompt: |
+      Studio medical animation. A stylized seated figure in light blue
+      scrubs, close-up on the outer-front of the thigh. The thigh is
+      divided lengthwise into thirds with subtle guide lines; the outer
+      middle third glows faintly to indicate the safe IM target for the
+      vastus lateralis. A small-barrelled syringe with a 25G needle
+      approaches at 90 degrees. The needle is not shown puncturing skin;
+      the plunger depresses slowly while a spiral arrow briefly indicates
+      the aspiration check. A warm glow marks dose delivery. Calm pacing,
+      white background, bottom 20% empty for caption overlay.
+    sites: ["thigh-im-left", "thigh-im-right"]
+
   - id: reconstitution
     title: "Reconstituting a peptide vial"
     duration_seconds: 8
@@ -104,9 +166,6 @@ videos:
 
 # Notes
 # -----
-# * Prompts intentionally avoid showing real needle punctures so the videos
-#   stay distribution-safe (App Store, social shares).
-# * Each prompt enforces "bottom 20% empty" so the iOS player can overlay the
-#   numbered step captions without re-rendering.
-# * Aspect ratios match the player viewport (9:16 for body shots inside the
-#   compound detail card, 16:9 for the reconstitution explainer card).
+# * Single-clip prompts may use stylized animation; `subq-abdomen` uses a
+#   two-part photoreal chain—Vertex safety may still block needles; iterate if needed.
+# * Aspect ratios match the player viewport (9:16 for body shots, 16:9 for reconstitution).
